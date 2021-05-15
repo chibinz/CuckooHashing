@@ -1,3 +1,6 @@
+.vscode/
+.cache/
+
 *.i
 *.ii
 *.gpu
