@@ -1,7 +1,7 @@
 #pragma once
 
-#include "types.h"
 #include "hasher.h"
+#include "types.h"
 
 typedef struct cuckoo_hash_table {
   /// Actual values
