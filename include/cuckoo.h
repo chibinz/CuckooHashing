@@ -1,12 +1,17 @@
-#include "types.h"
+#pragma once
 
-typedef u32 (*hash_func)(i32);
+#include "types.h"
+#include "hasher.h"
 
 typedef struct cuckoo_hash_table {
   /// Actual values
-  i32 *val;
+  i32 *v;
+  /// Array of unique hashers
+  hasher *h;
   /// Length of a single subtable
   u32 len;
-  /// Number of subtable / hash functions
+  /// Number of sub-tables / hash functions
   u32 dim;
+  /// Number of occupied entries
+  usize size;
 } table;
