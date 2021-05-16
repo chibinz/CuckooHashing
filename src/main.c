@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "cuckoo.h"
+#include "table.h"
 #include "xxhash.h"
 #include "types.h"
 

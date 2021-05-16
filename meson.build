@@ -5,8 +5,8 @@ project('CuckooHashing', 'c',
 incdir = include_directories('include')
 
 executable('chash',
-           'src/cuckoo.c',
            'src/main.c',
+           'src/table.c',
            'src/xxhash.c',
            install : true,
            include_directories : incdir)
