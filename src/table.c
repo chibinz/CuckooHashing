@@ -8,8 +8,6 @@
 #include "types.h"
 #include "xxhash.h"
 
-#include <time.h>
-
 #define EMPTY INT32_MIN
 
 static u32 bit_width(u32 x) {
@@ -29,14 +27,19 @@ static void swap(i32 *a, i32 *b) {
   *b = temp;
 }
 
+static void randomize(u32 *seed, u32 n) {
+  // Benign uninitialized read here
+  for (usize i = 0; i < n; i += 1) {
+    seed[i] = xxhash(i, seed[i]);
+  }
+}
+
 table *table_new(u32 len, u32 dim) {
   i32 *val = malloc(sizeof(i32) * len * dim);
   u32 *seed = malloc(sizeof(u32) * dim);
   table *ret = malloc(sizeof(table));
 
-  for (usize i = 0; i < dim; i += 1) {
-    seed[i] = rand();
-  }
+  randomize(seed, dim);
 
   for (usize i = 0; i < dim * len; i += 1) {
     val[i] = EMPTY;
@@ -59,9 +62,10 @@ void table_write(table *t, FILE *f) {
 }
 
 void table_insert(table *t, i32 v) {
-  t->size += 1;
-
+  assert(t->size < table_capacity(t));
   assert(v != EMPTY);
+
+  t->size += 1;
 
   for (usize i = 0; i < t->threshold && v != EMPTY; i += 1) {
     u32 b = i % t->dim;
@@ -69,9 +73,22 @@ void table_insert(table *t, i32 v) {
     swap(&v, &t->val[b * t->len + key]);
   }
 
+  // Mutually recursive call to rehash
   if (v != EMPTY) {
-    assert(!"Rehash needed!");
+    table_rehash(t, v);
   }
+}
+
+void table_rehash(table *t, i32 v) {
+  randomize(t->seed, t->dim);
+
+  for (usize i = 0; i < table_capacity(t); i += 1) {
+    if (t->val[i] != EMPTY) {
+      table_insert(t, t->val[i]);
+    }
+  }
+
+  table_insert(t, v);
 }
 
 void table_free(table *t) {

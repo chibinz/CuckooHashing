@@ -28,4 +28,6 @@ void table_write(table *t, FILE *f);
 
 void table_insert(table *t, i32 v);
 
+void table_rehash(table *t, i32 v);
+
 void table_free(table *t);
