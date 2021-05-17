@@ -35,9 +35,9 @@ static void randomize(u32 *seed, u32 n) {
 }
 
 table *table_new(u32 len, u32 dim) {
-  i32 *val = malloc(sizeof(i32) * len * dim);
-  u32 *seed = malloc(sizeof(u32) * dim);
-  table *ret = malloc(sizeof(table));
+  i32 *val = (i32 *)malloc(sizeof(i32) * len * dim);
+  u32 *seed = (u32 *)malloc(sizeof(u32) * dim);
+  table *ret = (table *)malloc(sizeof(table));
 
   randomize(seed, dim);
 
