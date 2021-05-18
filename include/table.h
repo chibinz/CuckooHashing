@@ -5,7 +5,8 @@
 #include "types.h"
 #include "xxhash.h"
 
-typedef struct cuckoo_hash_table {
+class HostTable {
+private:
   /// Actual values
   i32 *val;
   /// Array of unique hashers
@@ -18,16 +19,15 @@ typedef struct cuckoo_hash_table {
   u32 size;
   /// Number of iterations before rehash happens
   u32 threshold;
-} table;
 
-table *table_new(u32 len, u32 dim);
+  auto rehash(i32 v) -> void;
 
-u32 table_capacity(table *t);
-
-void table_write(table *t, FILE *f);
-
-void table_insert(table *t, i32 v);
-
-void table_rehash(table *t, i32 v);
-
-void table_free(table *t);
+public:
+  HostTable(u32 len, u32 dim);
+  ~HostTable();
+  auto capacity() -> u32;
+  auto find(u32 k) -> i32 *;
+  auto insert(i32 v) -> void;
+  auto remove(u32 k) -> void;
+  auto write(FILE *f) -> void;
+};

@@ -1,8 +1,6 @@
-#include <assert.h>
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <cassert>
+#include <cstdint>
+#include <cstdio>
 
 #include "table.h"
 #include "types.h"
@@ -34,65 +32,60 @@ static void randomize(u32 *seed, u32 n) {
   }
 }
 
-table *table_new(u32 len, u32 dim) {
-  i32 *val = (i32 *)malloc(sizeof(i32) * len * dim);
-  u32 *seed = (u32 *)malloc(sizeof(u32) * dim);
-  table *ret = (table *)malloc(sizeof(table));
+HostTable::HostTable(u32 len, u32 dim): len(len), dim(dim), size(0) {
+  val = new i32[len * dim];
+  seed = new u32[dim];
+  threshold = bit_width(dim * len);
 
   randomize(seed, dim);
 
   for (usize i = 0; i < dim * len; i += 1) {
     val[i] = EMPTY;
   }
-
-  *ret = (table){val, seed, len, dim, 0, bit_width(dim * len)};
-
-  return ret;
 }
 
-u32 table_capacity(table *t) { return t->len * t->dim; }
+HostTable::~HostTable() {
+  delete[] val;
+  delete[] seed;
+}
 
-void table_write(table *t, FILE *f) {
-  for (usize i = 0; i < t->dim; i += 1) {
-    for (usize j = 0; j < t->len; j += 1) {
-      fprintf(f, "%12x", t->val[i * t->len + j]);
+u32 HostTable::capacity() { return len * dim; }
+
+void HostTable::write(FILE *f) {
+  for (usize i = 0; i < dim; i += 1) {
+    for (usize j = 0; j < len; j += 1) {
+      fprintf(f, "%12x", val[i * len + j]);
     }
     fprintf(f, "\n");
   }
 }
 
-void table_insert(table *t, i32 v) {
-  assert(t->size < table_capacity(t));
+void HostTable::insert(i32 v) {
+  assert(size < capacity());
   assert(v != EMPTY);
 
-  t->size += 1;
+  size += 1;
 
-  for (usize i = 0; i < t->threshold && v != EMPTY; i += 1) {
-    u32 b = i % t->dim;
-    u32 key = xxhash(t->seed[b], v) % t->len;
-    swap(&v, &t->val[b * t->len + key]);
+  for (usize i = 0; i < threshold && v != EMPTY; i += 1) {
+    u32 b = i % dim;
+    u32 key = xxhash(seed[b], v) % len;
+    swap(&v, &val[b * len + key]);
   }
 
   // Mutually recursive call to rehash
   if (v != EMPTY) {
-    table_rehash(t, v);
+    rehash(v);
   }
 }
 
-void table_rehash(table *t, i32 v) {
-  randomize(t->seed, t->dim);
+void HostTable::rehash(i32 v) {
+  randomize(seed, dim);
 
-  for (usize i = 0; i < table_capacity(t); i += 1) {
-    if (t->val[i] != EMPTY) {
-      table_insert(t, t->val[i]);
+  for (usize i = 0; i < capacity(); i += 1) {
+    if (val[i] != EMPTY) {
+      insert(val[i]);
     }
   }
 
-  table_insert(t, v);
-}
-
-void table_free(table *t) {
-  free(t->val);
-  free(t->seed);
-  free(t);
+  insert(v);
 }

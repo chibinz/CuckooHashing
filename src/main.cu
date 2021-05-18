@@ -6,15 +6,13 @@
 #include "types.h"
 
 int main() {
-  table *t = table_new(10, 2);
+  auto t = HostTable(10, 2);
 
   for (usize i = 0; i < 10; i += 1) {
-    table_insert(t, rand() % 0xff);
-    table_write(t, stdout);
+    t.insert(rand() % 0xff);
+    t.write(stdout);
     putchar('\n');
   }
-
-  table_free(t);
 
   return 0;
 }
