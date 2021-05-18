@@ -2,8 +2,8 @@
 
 #include <stdio.h>
 
-#include "types.h"
-#include "xxhash.h"
+#include "Types.h"
+#include "xxHash.h"
 
 class HostTable {
 private:

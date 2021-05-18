@@ -2,9 +2,9 @@
 #include <cstdint>
 #include <cstdio>
 
-#include "table.h"
-#include "types.h"
-#include "xxhash.h"
+#include "HostTable.h"
+#include "Types.h"
+#include "xxHash.h"
 
 #define EMPTY INT32_MIN
 

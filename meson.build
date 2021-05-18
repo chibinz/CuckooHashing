@@ -6,7 +6,7 @@ incdir = include_directories('include')
 
 executable('chash',
            'src/main.cu',
-           'src/table.cu',
-           'src/xxhash.cu',
+           'src/HostTable.cu',
+           'src/xxHash.cu',
            install : true,
            include_directories : incdir)
