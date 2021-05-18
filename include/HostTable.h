@@ -1,6 +1,6 @@
 #pragma once
 
-#include <stdio.h>
+#include <cstdio>
 
 #include "Types.h"
 #include "xxHash.h"
@@ -19,6 +19,8 @@ private:
   u32 size;
   /// Number of iterations before rehash happens
   u32 threshold;
+
+  static const i32 empty;
 
   auto rehash(i32 v) -> void;
 

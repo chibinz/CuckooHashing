@@ -6,8 +6,6 @@
 #include "Types.h"
 #include "xxHash.h"
 
-#define EMPTY INT32_MIN
-
 static u32 bit_width(u32 x) {
   u32 w = 0;
 
@@ -32,6 +30,8 @@ static void randomize(u32 *seed, u32 n) {
   }
 }
 
+const i32 HostTable::empty = INT32_MIN;
+
 HostTable::HostTable(u32 len, u32 dim): len(len), dim(dim), size(0) {
   val = new i32[len * dim];
   seed = new u32[dim];
@@ -40,7 +40,7 @@ HostTable::HostTable(u32 len, u32 dim): len(len), dim(dim), size(0) {
   randomize(seed, dim);
 
   for (usize i = 0; i < dim * len; i += 1) {
-    val[i] = EMPTY;
+    val[i] = empty;
   }
 }
 
@@ -62,18 +62,18 @@ void HostTable::write(FILE *f) {
 
 void HostTable::insert(i32 v) {
   assert(size < capacity());
-  assert(v != EMPTY);
+  assert(v != empty);
 
   size += 1;
 
-  for (usize i = 0; i < threshold && v != EMPTY; i += 1) {
+  for (usize i = 0; i < threshold && v != empty; i += 1) {
     u32 b = i % dim;
     u32 key = xxhash(seed[b], v) % len;
     swap(&v, &val[b * len + key]);
   }
 
   // Mutually recursive call to rehash
-  if (v != EMPTY) {
+  if (v != empty) {
     rehash(v);
   }
 }
@@ -82,7 +82,7 @@ void HostTable::rehash(i32 v) {
   randomize(seed, dim);
 
   for (usize i = 0; i < capacity(); i += 1) {
-    if (val[i] != EMPTY) {
+    if (val[i] != empty) {
       insert(val[i]);
     }
   }
