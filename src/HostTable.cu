@@ -79,11 +79,18 @@ void HostTable::insert(i32 v) {
 }
 
 void HostTable::rehash(i32 v) {
+  i32 *old = val;
+  val = new i32[capacity()];
+
   randomize(seed, dim);
 
   for (usize i = 0; i < capacity(); i += 1) {
-    if (val[i] != empty) {
-      insert(val[i]);
+    val[i] = empty;
+  }
+
+  for (usize i = 0; i < capacity(); i += 1) {
+    if (old[i] != empty) {
+      insert(old[i]);
     }
   }
 
