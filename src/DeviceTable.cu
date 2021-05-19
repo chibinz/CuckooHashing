@@ -29,16 +29,25 @@ __global__ void genRandArray(i32 *array, u32 n) {
 __global__ void printArray(i32 *array, u32 n) {
   u32 id = threadIdx.x + blockIdx.x * blockDim.x;
   if (id < n) {
-    printf("%x\n", array[id]);
+    printf("%08x: %x\n", id, array[id]);
   }
 }
 
-__global__ void batchedInsert(i32 *array, i32 *table, u32 n) {
+__global__ void tableInit(i32 *table, u32 capacity) {
+  u32 id = threadIdx.x + blockIdx.x * blockDim.x;
+  if (id == 0) {
+    table[0] = 0;
+  } else if (id < capacity) {
+    table[id] = empty;
+  }
+}
+
+__global__ void batchedInsert(i32 *array, u32 n, i32 *table, u32 capacity) {
   u32 id = threadIdx.x + blockIdx.x * blockDim.x;
   if (id < n) {
-    u32 key = xxhash(0, array[id]);
-    u32 old = atomicCAS(&table[key], empty, array[id]);
-    if (old == empty) {
+    u32 key = xxhash(0, array[id]) % capacity;
+    i32 old = atomicCAS(&table[key], empty, array[id]);
+    if (old != empty) {
       atomicAdd(&table[0], 1);
     }
   }
@@ -54,15 +63,24 @@ void syncCheck() {
 }
 
 void wrapper() {
-  u32 tableSize = 25 << 1;
+  u32 capacity = 2048;
   u32 numEntries = 1024;
 
-  i32 *array, *table;
-  cudaMalloc(&array, sizeof(u32) * numEntries);
-  cudaMalloc(&table, sizeof(u32) * tableSize);
+  u32 numThreads = 64;
+  u32 numBlocks = numEntries / numThreads;
+  u32 tableBlocks = capacity / numThreads;
 
-  genRandArray<<<numEntries / 256, 256>>>(array, numEntries);
-  printArray<<<tableSize / 256, 256>>>(array, numEntries);
+  i32 *array, *table;
+  cudaMallocManaged(&array, sizeof(u32) * numEntries);
+  cudaMallocManaged(&table, sizeof(u32) * capacity);
+
+  genRandArray<<<numBlocks, numThreads>>>(array, numEntries);
+  tableInit<<<tableBlocks, numThreads>>>(table, capacity);
+  batchedInsert<<<1, numThreads>>>(array, numEntries, table, capacity);
+  printArray<<<1, numThreads>>>(table, 256);
+
+  cudaFree(array);
+  cudaFree(table);
 
   syncCheck();
 }
