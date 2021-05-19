@@ -8,7 +8,7 @@
 class HostTable {
 private:
   /// Actual values
-  i32 *val;
+  u32 *val;
   /// Array of unique hashers
   u32 *seed;
   /// Length of a single subtable
@@ -20,16 +20,16 @@ private:
   /// Number of iterations before rehash happens
   u32 threshold;
 
-  static const i32 empty;
+  static const u32 empty;
 
-  auto rehash(i32 v) -> void;
+  auto rehash(u32 v) -> void;
 
 public:
   HostTable(u32 len, u32 dim);
   ~HostTable();
   auto capacity() -> u32;
-  auto find(u32 k) -> i32 *;
-  auto insert(i32 v) -> void;
+  auto find(u32 k) -> u32 *;
+  auto insert(u32 v) -> void;
   auto remove(u32 k) -> void;
   auto write(FILE *f) -> void;
 };

@@ -7,14 +7,14 @@
 #include "Types.h"
 #include "xxHash.h"
 
-constexpr i32 empty = INT32_MIN;
+constexpr u32 empty = (u32)(-1);
 
 __global__ void hello() {
   printf("blockIdx.x=%d/%d blocks, threadIdx.x=%d/%d threads\n", blockIdx.x,
          gridDim.x, threadIdx.x, blockDim.x);
 }
 
-__global__ void genRandArray(i32 *array, u32 n) {
+__global__ void randomizeArray(u32 *array, u32 n) {
   u32 id = threadIdx.x + blockIdx.x * blockDim.x;
 
   if (id < n) {
@@ -22,33 +22,41 @@ __global__ void genRandArray(i32 *array, u32 n) {
     acc = xxhash(acc, threadIdx.x);
     acc = xxhash(acc, blockIdx.x);
     acc = xxhash(acc, blockDim.x);
-    array[id] = (i32)(acc);
+    array[id] = (u32)(acc);
   }
 }
 
-__global__ void printArray(i32 *array, u32 n) {
+__global__ void printArray(u32 *array, u32 n) {
   u32 id = threadIdx.x + blockIdx.x * blockDim.x;
   if (id < n) {
     printf("%08x: %x\n", id, array[id]);
   }
 }
 
-__global__ void tableSetEmpty(i32 *table, u32 capacity) {
+__global__ void setEmpty(u32 *val, u32 capacity) {
   u32 id = threadIdx.x + blockIdx.x * blockDim.x;
   if (id == 0) {
-    table[0] = 0;
+    val[0] = 0; // Collision counter
   } else if (id < capacity) {
-    table[id] = empty;
+    val[id] = empty;
   }
 }
 
-__global__ void batchedInsert(i32 *array, u32 n, i32 *table, u32 capacity) {
+__global__ void batchedInsert(DeviceTable t, u32 *array, u32 n) {
   u32 id = threadIdx.x + blockIdx.x * blockDim.x;
+
   if (id < n) {
-    u32 key = xxhash(0, array[id]) % capacity;
-    i32 old = atomicCAS(&table[key], empty, array[id]);
-    if (old != empty) {
-      atomicAdd(&table[0], 1);
+    u32 v = array[id];
+
+    for (u32 i = 0; i < t.threshold && v != empty; i += 1) {
+      u32 b = i % t.dim;
+      u32 key = xxhash(t.seed[b], v) % t.len;
+      v = atomicCAS(&t.val[b * t.len + key], empty, array[id]);
+    }
+
+    // Record number of collisions
+    if (v != empty) {
+      atomicAdd(&t.val[0], 1);
     }
   }
 }
@@ -62,34 +70,52 @@ void syncCheck() {
   }
 }
 
-void tableInit(DeviceTable *t, u32 dim, u32 len) {
+DeviceTable *tableNew(u32 dim, u32 len) {
+  DeviceTable *t = (DeviceTable *)malloc(sizeof(DeviceTable));
+
   t->dim = dim;
   t->len = len;
+  t->threshold = 16;
+
+  cudaMallocManaged(&t->val, sizeof(u32) * dim * len);
+  cudaMallocManaged(&t->seed, sizeof(u32) * dim);
+
+  u32 numThreads = 256;
+  u32 numBlocks = dim * len / numThreads;
+  setEmpty<<<numBlocks, numThreads>>>(t->val, dim * len);
+  randomizeArray<<<1, numThreads>>>(t->seed, dim);
+
+  return t;
 }
 
+void tableFree(DeviceTable *t) {
+  cudaFree(t->val);
+  cudaFree(t->seed);
+  free(t);
+}
 
 void wrapper() {
-  u32 capacity = 2048;
+  u32 dim = 2;
+  u32 len = 1024;
   u32 numEntries = 1024;
-
   u32 numThreads = 64;
-  u32 numBlocks = numEntries / numThreads;
+  u32 capacity = dim * len;
+  u32 entryBlocks = numEntries / numThreads;
   u32 tableBlocks = capacity / numThreads;
 
-  i32 *array, *table;
-  DeviceTable *t;
-  cudaMallocManaged(&t, sizeof(DeviceTable));
+  DeviceTable *t = tableNew(dim, len);
 
+  u32 *array;
   cudaMallocManaged(&array, sizeof(u32) * numEntries);
-  cudaMallocManaged(&table, sizeof(u32) * capacity);
+  randomizeArray<<<entryBlocks, numThreads>>>(array, numEntries);
 
-  genRandArray<<<numBlocks, numThreads>>>(array, numEntries);
-  tableSetEmpty<<<tableBlocks, numThreads>>>(table, capacity);
-  batchedInsert<<<1, numThreads>>>(array, numEntries, table, capacity);
-  printArray<<<1, numThreads>>>(table, 256);
+  syncCheck();
+
+  batchedInsert<<<entryBlocks, numThreads>>>(*t, array, numEntries);
+  printArray<<<1, 1>>>(t->val, 256);
 
   cudaFree(array);
-  cudaFree(table);
+  tableFree(t);
 
   syncCheck();
 }

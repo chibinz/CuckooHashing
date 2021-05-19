@@ -8,7 +8,7 @@ void wrapper();
 /// No implementation defined
 struct DeviceTable {
   /// Actual values
-  i32 *val;
+  u32 *val;
   /// Array of unique hashers
   u32 *seed;
   /// Length of a single subtable

@@ -1,6 +1,7 @@
 #include <cassert>
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 
 #include "HostTable.h"
 #include "Types.h"
@@ -17,8 +18,8 @@ static u32 bit_width(u32 x) {
   return w;
 }
 
-static void swap(i32 *a, i32 *b) {
-  i32 temp = *a;
+static void swap(u32 *a, u32 *b) {
+  u32 temp = *a;
   *a = *b;
   *b = temp;
 }
@@ -30,18 +31,15 @@ static void randomize(u32 *seed, u32 n) {
   }
 }
 
-const i32 HostTable::empty = INT32_MIN;
+const u32 HostTable::empty = (u32)(-1);
 
 HostTable::HostTable(u32 len, u32 dim): len(len), dim(dim), size(0) {
-  val = new i32[len * dim];
+  val = new u32[len * dim];
   seed = new u32[dim];
   threshold = bit_width(dim * len);
 
   randomize(seed, dim);
-
-  for (usize i = 0; i < dim * len; i += 1) {
-    val[i] = empty;
-  }
+  memset(val, (i32)(empty), sizeof(u32) * len * dim);
 }
 
 HostTable::~HostTable() {
@@ -60,7 +58,7 @@ void HostTable::write(FILE *f) {
   }
 }
 
-void HostTable::insert(i32 v) {
+void HostTable::insert(u32 v) {
   assert(size < capacity());
   assert(v != empty);
 
@@ -78,15 +76,12 @@ void HostTable::insert(i32 v) {
   }
 }
 
-void HostTable::rehash(i32 v) {
-  i32 *old = val;
-  val = new i32[capacity()];
+void HostTable::rehash(u32 v) {
+  u32 *old = val;
+  val = new u32[capacity()];
 
   randomize(seed, dim);
-
-  for (usize i = 0; i < capacity(); i += 1) {
-    val[i] = empty;
-  }
+  memset(val, (i32)(empty), sizeof(u32) * dim * len);
 
   for (usize i = 0; i < capacity(); i += 1) {
     if (old[i] != empty) {
