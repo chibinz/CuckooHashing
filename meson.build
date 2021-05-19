@@ -4,8 +4,11 @@ project('CuckooHashing', 'cuda',
 
 incdir = include_directories('include')
 
+add_global_arguments('-dc', language : 'cuda')
+
 executable('chash',
            'src/main.cu',
+           'src/DeviceTable.cu',
            'src/HostTable.cu',
            'src/xxHash.cu',
            install : true,

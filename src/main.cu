@@ -3,14 +3,10 @@
 
 #include "cuda.h"
 
+#include "DeviceTable.h"
 #include "HostTable.h"
 #include "Types.h"
 #include "xxHash.h"
-
-__global__ void hello() {
-  printf("blockIdx.x=%d/%d blocks, threadIdx.x=%d/%d threads\n", blockIdx.x,
-         gridDim.x, threadIdx.x, blockDim.x);
-}
 
 int main() {
   auto t = HostTable(10, 2);
@@ -21,16 +17,18 @@ int main() {
     putchar('\n');
   }
 
-  hello<<<1, 1024>>>();
-
   cudaDeviceSynchronize();
 
-  cudaError_t err = cudaGetLastError(); // Get error code
+  wrapper();
+
+  auto err = cudaGetLastError(); // Get error code
 
   if (err != cudaSuccess) {
-    printf("CUDA Error: %s\n", cudaGetErrorString(err));
-    exit(-1);
+    printf("Error: %s!\n", cudaGetErrorString(err));
+    return -1;
   }
+
+  cudaDeviceSynchronize();
 
   return 0;
 }
