@@ -17,18 +17,7 @@ int main() {
     putchar('\n');
   }
 
-  cudaDeviceSynchronize();
-
   wrapper();
-
-  auto err = cudaGetLastError(); // Get error code
-
-  if (err != cudaSuccess) {
-    printf("Error: %s!\n", cudaGetErrorString(err));
-    return -1;
-  }
-
-  cudaDeviceSynchronize();
 
   return 0;
 }
