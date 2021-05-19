@@ -1,6 +1,6 @@
 project('CuckooHashing', 'cuda',
   version : '0.1',
-  default_options : ['warning_level=2'])
+  default_options : ['warning_level=2', 'cuda_std=c++14'])
 
 incdir = include_directories('include')
 
