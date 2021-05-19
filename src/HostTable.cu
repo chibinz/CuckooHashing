@@ -6,17 +6,7 @@
 #include "HostTable.h"
 #include "Types.h"
 #include "xxHash.h"
-
-static u32 bit_width(u32 x) {
-  u32 w = 0;
-
-  while (x > 0) {
-    w += 1;
-    x >>= 1;
-  }
-
-  return w;
-}
+#include "Common.h"
 
 static void swap(u32 *a, u32 *b) {
   u32 temp = *a;
@@ -36,7 +26,7 @@ const u32 HostTable::empty = (u32)(-1);
 HostTable::HostTable(u32 len, u32 dim): len(len), dim(dim), size(0) {
   val = new u32[len * dim];
   seed = new u32[dim];
-  threshold = bit_width(dim * len);
+  threshold = bit_width(4 * dim * len);
 
   randomize(seed, dim);
   memset(val, (i32)(empty), sizeof(u32) * len * dim);

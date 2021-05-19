@@ -5,7 +5,7 @@
 void wrapper();
 
 /// Convenience struct to pass around as function parameter
-/// No implementation defined
+/// No member function implementation defined
 struct DeviceTable {
   /// Actual values
   u32 *val;
