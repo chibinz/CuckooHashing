@@ -33,7 +33,7 @@ __global__ void printArray(i32 *array, u32 n) {
   }
 }
 
-__global__ void tableInit(i32 *table, u32 capacity) {
+__global__ void tableSetEmpty(i32 *table, u32 capacity) {
   u32 id = threadIdx.x + blockIdx.x * blockDim.x;
   if (id == 0) {
     table[0] = 0;
@@ -62,6 +62,12 @@ void syncCheck() {
   }
 }
 
+void tableInit(DeviceTable *t, u32 dim, u32 len) {
+  t->dim = dim;
+  t->len = len;
+}
+
+
 void wrapper() {
   u32 capacity = 2048;
   u32 numEntries = 1024;
@@ -71,11 +77,14 @@ void wrapper() {
   u32 tableBlocks = capacity / numThreads;
 
   i32 *array, *table;
+  DeviceTable *t;
+  cudaMallocManaged(&t, sizeof(DeviceTable));
+
   cudaMallocManaged(&array, sizeof(u32) * numEntries);
   cudaMallocManaged(&table, sizeof(u32) * capacity);
 
   genRandArray<<<numBlocks, numThreads>>>(array, numEntries);
-  tableInit<<<tableBlocks, numThreads>>>(table, capacity);
+  tableSetEmpty<<<tableBlocks, numThreads>>>(table, capacity);
   batchedInsert<<<1, numThreads>>>(array, numEntries, table, capacity);
   printArray<<<1, numThreads>>>(table, 256);
 
