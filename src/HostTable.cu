@@ -3,10 +3,10 @@
 #include <cstdio>
 #include <cstring>
 
+#include "Common.h"
 #include "HostTable.h"
 #include "Types.h"
 #include "xxHash.h"
-#include "Common.h"
 
 static void swap(u32 *a, u32 *b) {
   u32 temp = *a;
@@ -23,7 +23,7 @@ static void randomize(u32 *seed, u32 n) {
 
 const u32 HostTable::empty = (u32)(-1);
 
-HostTable::HostTable(u32 len, u32 dim): len(len), dim(dim), size(0) {
+HostTable::HostTable(u32 len, u32 dim) : len(len), dim(dim), size(0) {
   val = new u32[len * dim];
   seed = new u32[dim];
   threshold = bit_width(4 * dim * len);

@@ -2,10 +2,10 @@
 
 #include "cuda.h"
 
+#include "Common.h"
 #include "DeviceTable.h"
 #include "Types.h"
 #include "xxHash.h"
-#include "Common.h"
 
 constexpr u32 empty = (u32)(-1);
 
