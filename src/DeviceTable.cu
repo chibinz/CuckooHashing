@@ -18,7 +18,7 @@ __global__ void randomizeArray(u32 *array, u32 n) {
   u32 id = threadIdx.x + blockIdx.x * blockDim.x;
 
   if (id < n) {
-    u32 acc = xxhash(0, n);
+    u32 acc = xxhash(array[id], n);
     acc = xxhash(acc, threadIdx.x);
     acc = xxhash(acc, blockIdx.x);
     acc = xxhash(acc, blockDim.x);
@@ -83,12 +83,7 @@ void syncCheck() {
   }
 }
 
-DeviceTable *tableNew(u32 dim, u32 len) {
-  DeviceTable *t;
-  cudaMallocManaged(&t, sizeof(DeviceTable));
-  cudaMallocManaged(&t->val, sizeof(u32) * dim * len);
-  cudaMallocManaged(&t->seed, sizeof(u32) * dim);
-
+void tableInit(DeviceTable *t, u32 dim, u32 len) {
   t->dim = dim;
   t->len = len;
   t->threshold = 4 * bit_width(dim * len);
@@ -101,6 +96,15 @@ DeviceTable *tableNew(u32 dim, u32 len) {
   syncCheck();
   randomizeArray<<<1, dim>>>(t->seed, dim);
   syncCheck();
+}
+
+DeviceTable *tableNew(u32 dim, u32 len) {
+  DeviceTable *t;
+  cudaMallocManaged(&t, sizeof(DeviceTable));
+  cudaMallocManaged(&t->val, sizeof(u32) * dim * len);
+  cudaMallocManaged(&t->seed, sizeof(u32) * dim);
+
+  tableInit(t, dim, len);
 
   return t;
 }
@@ -112,11 +116,13 @@ void tableFree(DeviceTable *t) {
 }
 
 void wrapper() {
+  u32 dim = 2;
+  u32 len = 1 << 24;
   u32 numEntries = 1 << 24;
   u32 numThreads = 1024;
   u32 entryBlocks = numEntries / numThreads;
 
-  DeviceTable *t = tableNew(2, 1 << 24);
+  DeviceTable *t = tableNew(dim, len);
 
   u32 *array;
   cudaMallocManaged(&array, sizeof(u32) * numEntries);
@@ -125,6 +131,11 @@ void wrapper() {
   syncCheck();
   batchedInsert<<<entryBlocks, numThreads>>>(t, array, numEntries);
   syncCheck();
+  while (t->collision > 0) {
+    tableInit(t, dim, len);
+    batchedInsert<<<entryBlocks, numThreads>>>(t, array, numEntries);
+    syncCheck();
+  }
   batchedLookup<<<entryBlocks, numThreads>>>(t, array, numEntries);
   syncCheck();
 
