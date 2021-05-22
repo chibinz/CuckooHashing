@@ -108,6 +108,7 @@ DeviceTable *tableNew(u32 dim, u32 len) {
 void tableFree(DeviceTable *t) {
   cudaFree(t->val);
   cudaFree(t->seed);
+  cudaFree(t);
 }
 
 void wrapper() {
