@@ -19,4 +19,6 @@ struct DeviceTable {
   u32 size;
   /// Number of iterations before rehash happens
   u32 threshold;
+  /// Total number of collisions occurred
+  u32 collision;
 };

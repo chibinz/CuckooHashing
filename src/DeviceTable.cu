@@ -35,7 +35,7 @@ __global__ void printArray(u32 *array, u32 n) {
 
 __global__ void setEmpty(u32 *val, u32 capacity) {
   u32 id = threadIdx.x + blockIdx.x * blockDim.x;
-  if (id == 0) {
+  if (id < capacity) {
     val[id] = empty;
   }
 }
@@ -54,7 +54,7 @@ __global__ void batchedInsert(DeviceTable *t, u32 *array, u32 n) {
 
     // Record number of collisions
     if (v != empty) {
-      atomicAdd(&t->val[0], 1);
+      atomicAdd(&t->collision, 1);
     }
   }
 }
@@ -91,14 +91,15 @@ DeviceTable *tableNew(u32 dim, u32 len) {
 
   t->dim = dim;
   t->len = len;
-  t->threshold = bit_width(4 * dim * len);
+  t->threshold = 4 * bit_width(dim * len);
+  t->collision = 0;
 
   u32 numThreads = 256;
   u32 numBlocks = dim * len / numThreads;
 
   setEmpty<<<numBlocks, numThreads>>>(t->val, dim * len);
   syncCheck();
-  randomizeArray<<<1, 1>>>(t->seed, dim);
+  randomizeArray<<<1, dim>>>(t->seed, dim);
   syncCheck();
 
   return t;
@@ -110,18 +111,14 @@ void tableFree(DeviceTable *t) {
 }
 
 void wrapper() {
-  u32 dim = 2;
-  u32 len = 1 << 24;
   u32 numEntries = 1 << 24;
   u32 numThreads = 1024;
   u32 entryBlocks = numEntries / numThreads;
 
-  DeviceTable *t = tableNew(dim, len);
+  DeviceTable *t = tableNew(2, 1 << 24);
 
-  u32 *array, *numCollisions;
+  u32 *array;
   cudaMallocManaged(&array, sizeof(u32) * numEntries);
-  cudaMallocManaged(&numCollisions, sizeof(u32));
-  *numCollisions = 0;
 
   randomizeArray<<<entryBlocks, numThreads>>>(array, numEntries);
   syncCheck();
@@ -129,7 +126,8 @@ void wrapper() {
   syncCheck();
   batchedLookup<<<entryBlocks, numThreads>>>(t, array, numEntries);
   syncCheck();
-  printArray<<<1, 1>>>(t->val, 1); // Print number of collisions
+
+  printf("Total number of collisions: %u\n", t->collision);
   syncCheck();
 
   cudaFree(array);
