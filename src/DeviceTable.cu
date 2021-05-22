@@ -40,34 +40,34 @@ __global__ void setEmpty(u32 *val, u32 capacity) {
   }
 }
 
-__global__ void batchedInsert(DeviceTable t, u32 *array, u32 n) {
+__global__ void batchedInsert(DeviceTable *t, u32 *array, u32 n) {
   u32 id = threadIdx.x + blockIdx.x * blockDim.x;
 
   if (id < n) {
     u32 v = array[id];
 
-    for (u32 i = 0; i < t.threshold && v != empty; i += 1) {
-      u32 b = i % t.dim;
-      u32 key = xxhash(t.seed[b], v) % t.len;
-      v = atomicExch(&t.val[b * t.len + key], v);
+    for (u32 i = 0; i < t->threshold && v != empty; i += 1) {
+      u32 b = i % t->dim;
+      u32 key = xxhash(t->seed[b], v) % t->len;
+      v = atomicExch(&t->val[b * t->len + key], v);
     }
 
     // Record number of collisions
     if (v != empty) {
-      atomicAdd(&t.val[0], 1);
+      atomicAdd(&t->val[0], 1);
     }
   }
 }
 
-__global__ void batchedLookup(DeviceTable t, u32 *keys, u32 n) {
+__global__ void batchedLookup(DeviceTable *t, u32 *keys, u32 n) {
   u32 id = threadIdx.x + blockIdx.x * blockDim.x;
 
   if (id < n) {
     u32 v = keys[id];
 
-    for (u32 i = 0; i < t.dim; i += 1) {
-      u32 key = xxhash(t.seed[i], v) % t.len;
-      if (t.val[i * t.len + key] == v) {
+    for (u32 i = 0; i < t->dim; i += 1) {
+      u32 key = xxhash(t->seed[i], v) % t->len;
+      if (t->val[i * t->len + key] == v) {
         break;
       }
     }
@@ -125,9 +125,9 @@ void wrapper() {
 
   randomizeArray<<<entryBlocks, numThreads>>>(array, numEntries);
   syncCheck();
-  batchedInsert<<<entryBlocks, numThreads>>>(*t, array, numEntries);
+  batchedInsert<<<entryBlocks, numThreads>>>(t, array, numEntries);
   syncCheck();
-  batchedLookup<<<entryBlocks, numThreads>>>(*t, array, numEntries);
+  batchedLookup<<<entryBlocks, numThreads>>>(t, array, numEntries);
   syncCheck();
   printArray<<<1, 1>>>(t->val, 1); // Print number of collisions
   syncCheck();
