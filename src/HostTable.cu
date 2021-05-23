@@ -8,19 +8,6 @@
 #include "Types.h"
 #include "xxHash.h"
 
-static void swap(u32 *a, u32 *b) {
-  u32 temp = *a;
-  *a = *b;
-  *b = temp;
-}
-
-static void randomize(u32 *seed, u32 n) {
-  // Benign uninitialized read here
-  for (usize i = 0; i < n; i += 1) {
-    seed[i] = xxhash(i, seed[i]);
-  }
-}
-
 const u32 HostTable::empty = (u32)(-1);
 
 HostTable::HostTable(u32 len, u32 dim) : len(len), dim(dim), size(0) {

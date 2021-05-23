@@ -2,12 +2,13 @@
 
 #include "cuda.h"
 #include "cuda_runtime.h"
+#include "device_launch_parameters.h"
 
+#include "Common.h"
 #include "Types.h"
 #include "xxHash.h"
 #include "MultilevelTable.h"
 
-constexpr u32 empty = (u32)(-1);
 
 __global__ void bucketInput(MultilevelTable *t, u32 *array, u32 n) {
     u32 id = threadIdx.x + blockDim.x * blockIdx.x;

@@ -1,18 +1,13 @@
 #include <cstdio>
 
 #include "cuda.h"
+#include "cuda_runtime.h"
+#include "device_launch_parameters.h"
 
 #include "Common.h"
 #include "DeviceTable.h"
 #include "Types.h"
 #include "xxHash.h"
-
-constexpr u32 empty = (u32)(-1);
-
-__global__ void hello() {
-  printf("blockIdx.x=%d/%d blocks, threadIdx.x=%d/%d threads\n", blockIdx.x,
-         gridDim.x, threadIdx.x, blockDim.x);
-}
 
 __global__ void randomizeArray(u32 *array, u32 n) {
   u32 id = threadIdx.x + blockIdx.x * blockDim.x;
@@ -74,61 +69,30 @@ __global__ void batchedLookup(DeviceTable *t, u32 *keys, u32 n) {
   }
 }
 
-void syncCheck() {
-  cudaDeviceSynchronize();
-  auto err = cudaGetLastError(); // Get error code
-  if (err != cudaSuccess) {
-    printf("Error: %s!\n", cudaGetErrorString(err));
-    exit(-1);
-  }
-}
-
 void tableInit(DeviceTable *t, u32 dim, u32 len) {
   t->dim = dim;
   t->len = len;
   t->threshold = 4 * bit_width(dim * len);
   t->collision = 0;
 
-  u32 numThreads = 256;
-  u32 numBlocks = dim * len / numThreads;
-
-  setEmpty<<<numBlocks, numThreads>>>(t->val, dim * len);
+  cudaMemset(t->val, -1, sizeof(u32) * dim * len);
+  randomize(t->seed, dim);
   syncCheck();
-  randomizeArray<<<1, dim>>>(t->seed, dim);
-  syncCheck();
-}
-
-DeviceTable *tableNew(u32 dim, u32 len) {
-  DeviceTable *t;
-  cudaMallocManaged(&t, sizeof(DeviceTable));
-  cudaMallocManaged(&t->val, sizeof(u32) * dim * len);
-  cudaMallocManaged(&t->seed, sizeof(u32) * dim);
-
-  tableInit(t, dim, len);
-
-  return t;
-}
-
-void tableFree(DeviceTable *t) {
-  cudaFree(t->val);
-  cudaFree(t->seed);
-  cudaFree(t);
 }
 
 void wrapper() {
-  u32 dim = 2;
-  u32 len = 1 << 24;
+  u32 dim = 3;
+  u32 len = 1 << 23;
   u32 numEntries = 1 << 24;
   u32 numThreads = 1024;
   u32 entryBlocks = numEntries / numThreads;
 
-  DeviceTable *t = tableNew(dim, len);
+  auto t = new DeviceTable(dim, len);
 
   u32 *array;
   cudaMallocManaged(&array, sizeof(u32) * numEntries);
+  randomize(array, numEntries);
 
-  randomizeArray<<<entryBlocks, numThreads>>>(array, numEntries);
-  syncCheck();
   batchedInsert<<<entryBlocks, numThreads>>>(t, array, numEntries);
   syncCheck();
   while (t->collision > 0) {
@@ -143,7 +107,7 @@ void wrapper() {
   syncCheck();
 
   cudaFree(array);
-  tableFree(t);
+  delete t;
 
   syncCheck();
 }

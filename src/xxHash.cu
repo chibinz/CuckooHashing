@@ -9,11 +9,11 @@ static const u32 PRIME3 = 0xC2B2AE3DU;
 static const u32 PRIME4 = 0x27D4EB2FU;
 static const u32 PRIME5 = 0x165667B1U;
 
-__dual__ static u32 rotate_left(u32 v, u32 n) {
+__host__ __device__ static u32 rotate_left(u32 v, u32 n) {
   return (v << n) | (v >> (32 - n));
 }
 
-__dual__ u32 xxhash(u32 seed, u32 v) {
+__host__ __device__ u32 xxhash(u32 seed, u32 v) {
   u32 acc = seed + PRIME5;
 
   acc = acc + v * PRIME3;
