@@ -3,6 +3,7 @@
 #include <cstdlib>
 
 #include "cuda.h"
+#include "cuda_runtime.h"
 
 #include "Types.h"
 #include "xxHash.h"

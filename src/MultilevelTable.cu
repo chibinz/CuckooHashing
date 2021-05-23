@@ -5,23 +5,22 @@
 #include "device_launch_parameters.h"
 
 #include "Common.h"
+#include "MultilevelTable.h"
 #include "Types.h"
 #include "xxHash.h"
-#include "MultilevelTable.h"
-
 
 __global__ void bucketInput(MultilevelTable *t, u32 *array, u32 n) {
-    u32 id = threadIdx.x + blockDim.x * blockIdx.x;
+  u32 id = threadIdx.x + blockDim.x * blockIdx.x;
 
-    if (id < n) {
-        u32 b = array[id] % t->bucket;
-        u32 old = atomicAdd(&t->bucketSize[b], 1);
-        if (old < t->bucketCapacity) {
-            t->bucketData[b * t->bucketCapacity + old] = array[id];
-        } else {
-            printf("Bucket overflow!\n");
-        }
+  if (id < n) {
+    u32 b = array[id] % t->bucket;
+    u32 old = atomicAdd(&t->bucketSize[b], 1);
+    if (old < t->bucketCapacity) {
+      t->bucketData[b * t->bucketCapacity + old] = array[id];
+    } else {
+      printf("Bucket overflow!\n");
     }
+  }
 }
 
 __global__ void bucketInsert(MultilevelTable *t) {
@@ -42,4 +41,11 @@ __global__ void bucketInsert(MultilevelTable *t) {
       atomicAdd(&t->collision, 1);
     }
   }
+}
+
+__global__ void bucketLookup(MultilevelTable *T) {}
+
+void test() {
+  auto t = new MultilevelTable();
+
 }

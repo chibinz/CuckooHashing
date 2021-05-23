@@ -69,17 +69,6 @@ __global__ void batchedLookup(DeviceTable *t, u32 *keys, u32 n) {
   }
 }
 
-void tableInit(DeviceTable *t, u32 dim, u32 len) {
-  t->dim = dim;
-  t->len = len;
-  t->threshold = 4 * bit_width(dim * len);
-  t->collision = 0;
-
-  cudaMemset(t->val, -1, sizeof(u32) * dim * len);
-  randomize(t->seed, dim);
-  syncCheck();
-}
-
 void wrapper() {
   u32 dim = 3;
   u32 len = 1 << 23;
@@ -91,12 +80,12 @@ void wrapper() {
 
   u32 *array;
   cudaMallocManaged(&array, sizeof(u32) * numEntries);
-  randomize(array, numEntries);
+  randomizeArray<<<entryBlocks, numThreads>>>(array, numEntries);
 
   batchedInsert<<<entryBlocks, numThreads>>>(t, array, numEntries);
   syncCheck();
   while (t->collision > 0) {
-    tableInit(t, dim, len);
+    t->reset();
     batchedInsert<<<entryBlocks, numThreads>>>(t, array, numEntries);
     syncCheck();
   }

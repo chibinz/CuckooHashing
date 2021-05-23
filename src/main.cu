@@ -5,11 +5,10 @@
 
 #include "DeviceTable.h"
 #include "HostTable.h"
-#include "Types.h"
-#include "xxHash.h"
+#include "MultilevelTable.h"
 
 int main() {
-  wrapper();
+  test();
 
   return 0;
 }

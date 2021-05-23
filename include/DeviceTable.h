@@ -29,6 +29,8 @@ struct DeviceTable {
   /// Total number of collisions occurred
   u32 collision;
 
+  DeviceTable() = default;
+
   DeviceTable(u32 dim, u32 len) : len(len), dim(dim) {
     cudaMallocManaged(&val, sizeof(u32) * dim * len);
     cudaMallocManaged(&seed, sizeof(u32) * dim);
@@ -38,7 +40,7 @@ struct DeviceTable {
     cudaMemset(val, -1, sizeof(u32) * dim * len);
     randomize(seed, dim);
 
-    cudaDeviceSynchronize();
+    syncCheck();
   }
 
   ~DeviceTable() {
@@ -54,5 +56,11 @@ struct DeviceTable {
 
   void operator delete(void *p) {
     cudaFree(p);
+  }
+
+  void reset() {
+    cudaMemset(val, -1, sizeof(u32) * dim * len);
+    randomize(seed, dim);
+    syncCheck();
   }
 };
