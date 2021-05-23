@@ -10,6 +10,7 @@ executable('chash',
            'src/main.cu',
            'src/DeviceTable.cu',
            'src/HostTable.cu',
+           'src/MultilevelTable.cu',
            'src/xxHash.cu',
            install : true,
            include_directories : incdir)
