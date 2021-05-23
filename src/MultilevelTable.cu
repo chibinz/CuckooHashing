@@ -26,9 +26,9 @@ __global__ void bucketInput(MultilevelTable *t, u32 *array, u32 n) {
 
 __global__ void bucketInsert(MultilevelTable *t) {
   // Declare fixed size shared memory
-  __shared__ u32 local[3 * 128];
+  __shared__ u32 local[3 * 192];
   // Initialize shared memory
-  for (u32 i = threadIdx.x; i < 3 * 128; i += blockDim.x)
+  for (u32 i = threadIdx.x; i < 3 * 192; i += blockDim.x)
     local[i] = empty;
   __syncthreads();
 
@@ -42,6 +42,7 @@ __global__ void bucketInsert(MultilevelTable *t) {
       u32 d = i % t->dim;
       u32 key = xxhash(t->seed[d], v) % t->len;
       v = atomicExch(&local[d * t->len + key], v);
+      // v = atomicExch(&t->val[bid * t->len * t->dim + d * t->len + key], v);
     }
 
     // Record number of collisions
@@ -49,7 +50,7 @@ __global__ void bucketInsert(MultilevelTable *t) {
       atomicAdd(&t->collision, 1);
     } else {
       // Copy value from shared memory to global memory
-      for (u32 i = threadIdx.x; i < 3 * 128; i += blockDim.x) {
+      for (u32 i = threadIdx.x; i < 3 * 192; i += blockDim.x) {
         t->val[bid * t->len * t->dim + i] = local[i];
       }
     }
@@ -60,10 +61,10 @@ __global__ void bucketLookup(MultilevelTable *T) {}
 
 void test() {
   u32 dim = 3;
-  u32 len = 128;
-  u32 bucket = 1 << 17;
-  u32 bucketCapacity = 256;
+  u32 len = 192;
+  u32 bucketCapacity = 512;
   u32 numEntries = 1 << 24;
+  u32 bucket = numEntries / 409;
   u32 numThreads = 1024;
   u32 entryBlocks = numEntries / numThreads;
 

@@ -8,6 +8,7 @@
 #include "MultilevelTable.h"
 
 int main() {
+  wrapper();
   test();
 
   return 0;
