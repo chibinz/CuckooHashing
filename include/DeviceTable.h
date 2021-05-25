@@ -6,23 +6,23 @@
 #include "cuda.h"
 #include "cuda_runtime.h"
 
-#include "HostTable.h"
 #include "Common.h"
+#include "HostTable.h"
 #include "Types.h"
 
 void wrapper();
 
 /// Convenience struct to pass around as function parameter
 struct DeviceTable {
-  /// Actual values
+  /// Actual data
   u32 *val;
-  /// Array of unique hashers
+  /// Seed for each subtable hash function
   u32 *seed;
-  /// Length of a single subtable
-  u32 len;
   /// Number of sub-tables / hash functions
   u32 dim;
-  /// Number of occupied entries
+  /// Length of a single subtable
+  u32 len;
+  /// Number of expected input entries
   u32 size;
   /// Number of iterations before rehash happens
   u32 threshold;
@@ -31,11 +31,12 @@ struct DeviceTable {
 
   DeviceTable() = default;
 
-  DeviceTable(u32 dim, u32 len) {
-    this->dim = dim;
-    this->len = len;
-    collision = 0;
+  DeviceTable(u32 capacity, u32 inputSize) {
+    dim = 3;
+    len = capacity / dim;
+    size = inputSize;
     threshold = 4 * (dim * len);
+    collision = 0;
 
     cudaMallocManaged(&val, sizeof(u32) * dim * len);
     cudaMallocManaged(&seed, sizeof(u32) * dim);

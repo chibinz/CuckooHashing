@@ -10,10 +10,10 @@ struct HostTable {
   u32 *val;
   /// Array of unique hashers
   u32 *seed;
-  /// Length of a single subtable
-  u32 len;
   /// Number of sub-tables / hash functions
   u32 dim;
+  /// Length of a single subtable
+  u32 len;
   /// Number of occupied entries
   u32 size;
   /// Number of iterations before rehash happens

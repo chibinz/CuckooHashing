@@ -70,13 +70,11 @@ __global__ void batchedLookup(DeviceTable *t, u32 *keys, u32 n) {
 }
 
 void wrapper() {
-  u32 dim = 3;
-  u32 len = 1 << 23;
   u32 numEntries = 1 << 24;
   u32 numThreads = 1024;
   u32 entryBlocks = numEntries / numThreads;
 
-  auto t = new DeviceTable(dim, len);
+  auto t = new DeviceTable(1 << 25, numEntries);
 
   u32 *array;
   cudaMallocManaged(&array, sizeof(u32) * numEntries);
