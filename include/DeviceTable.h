@@ -6,13 +6,13 @@
 #include "cuda.h"
 #include "cuda_runtime.h"
 
-#include "Types.h"
+#include "HostTable.h"
 #include "Common.h"
+#include "Types.h"
 
 void wrapper();
 
 /// Convenience struct to pass around as function parameter
-/// No member function implementation defined
 struct DeviceTable {
   /// Actual values
   u32 *val;
@@ -31,12 +31,14 @@ struct DeviceTable {
 
   DeviceTable() = default;
 
-  DeviceTable(u32 dim, u32 len) : len(len), dim(dim) {
+  DeviceTable(u32 dim, u32 len) {
+    this->dim = dim;
+    this->len = len;
+    collision = 0;
+    threshold = 4 * (dim * len);
+
     cudaMallocManaged(&val, sizeof(u32) * dim * len);
     cudaMallocManaged(&seed, sizeof(u32) * dim);
-    threshold = 4 * bit_width(dim * len);
-    collision = 0;
-
     cudaMemset(val, -1, sizeof(u32) * dim * len);
     randomize(seed, dim);
 
@@ -54,13 +56,14 @@ struct DeviceTable {
     return ret;
   }
 
-  void operator delete(void *p) {
-    cudaFree(p);
-  }
+  void operator delete(void *p) { cudaFree(p); }
 
   void reset() {
     cudaMemset(val, -1, sizeof(u32) * dim * len);
     randomize(seed, dim);
     syncCheck();
   }
+
+  void insert(u32 *v);
+  void lookup(u32 *k);
 };

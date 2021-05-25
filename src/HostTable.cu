@@ -8,8 +8,6 @@
 #include "Types.h"
 #include "xxHash.h"
 
-const u32 HostTable::empty = (u32)(-1);
-
 HostTable::HostTable(u32 len, u32 dim) : len(len), dim(dim), size(0) {
   val = new u32[len * dim];
   seed = new u32[dim];
