@@ -69,32 +69,28 @@ __global__ void batchedLookup(DeviceTable *t, u32 *keys, u32 n) {
   }
 }
 
-void wrapper() {
+void randomizeGPU(u32 *array, u32 n) {
+  randomizeArray<<<n / 256 + 1, 256>>>(array, n);
+}
+
+void DeviceTable::insert(u32 *v) {
   u32 numEntries = 1 << 24;
   u32 numThreads = 1024;
   u32 entryBlocks = numEntries / numThreads;
 
-  auto t = new DeviceTable(1 << 25, numEntries);
-
-  u32 *array;
-  cudaMallocManaged(&array, sizeof(u32) * numEntries);
-  randomizeArray<<<entryBlocks, numThreads>>>(array, numEntries);
-
-  batchedInsert<<<entryBlocks, numThreads>>>(t, array, numEntries);
+  batchedInsert<<<entryBlocks, numThreads>>>(this, v, numEntries);
   syncCheck();
-  while (t->collision > 0) {
-    t->reset();
-    batchedInsert<<<entryBlocks, numThreads>>>(t, array, numEntries);
+  while (collision > 0) {
+    reset();
+    batchedInsert<<<entryBlocks, numThreads>>>(this, v, numEntries);
     syncCheck();
   }
-  batchedLookup<<<entryBlocks, numThreads>>>(t, array, numEntries);
-  syncCheck();
+}
 
-  printf("Total number of collisions: %u\n", t->collision);
-  syncCheck();
-
-  cudaFree(array);
-  delete t;
-
+void DeviceTable::lookup(u32 *k) {
+  u32 numEntries = 1 << 24;
+  u32 numThreads = 1024;
+  u32 entryBlocks = numEntries / numThreads;
+  batchedLookup<<<entryBlocks, numThreads>>>(this, k, numEntries);
   syncCheck();
 }

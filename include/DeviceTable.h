@@ -10,7 +10,7 @@
 #include "HostTable.h"
 #include "Types.h"
 
-void wrapper();
+void randomizeGPU(u32 *array, u32 n);
 
 /// Convenience struct to pass around as function parameter
 struct DeviceTable {
@@ -28,6 +28,10 @@ struct DeviceTable {
   u32 threshold;
   /// Total number of collisions occurred
   u32 collision;
+  /// Total number of blocks
+  u32 block;
+  /// Number of thread per block
+  u32 thread;
 
   DeviceTable() = default;
 
@@ -37,11 +41,13 @@ struct DeviceTable {
     size = inputSize;
     threshold = 4 * (dim * len);
     collision = 0;
+    thread = 1024;
+    block = inputSize / thread;
 
     cudaMallocManaged(&val, sizeof(u32) * dim * len);
     cudaMallocManaged(&seed, sizeof(u32) * dim);
     cudaMemset(val, -1, sizeof(u32) * dim * len);
-    randomize(seed, dim);
+    randomizeGPU(seed, dim);
 
     syncCheck();
   }
@@ -61,7 +67,7 @@ struct DeviceTable {
 
   void reset() {
     cudaMemset(val, -1, sizeof(u32) * dim * len);
-    randomize(seed, dim);
+    randomizeGPU(seed, dim);
     syncCheck();
   }
 
