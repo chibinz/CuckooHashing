@@ -50,7 +50,7 @@ __global__ void lookupKernel(DeviceTable *t, u32 *keys, u32 *set, u32 n) {
 
     for (u32 d = 0; d < t->dim; d += 1) {
       u32 key = xxhash(t->seed[d], k) % t->len;
-      if (t->val[d * t->len + key] == k) {
+      if (k == t->val[d * t->len + key]) {
         set[id] = 1;
       }
     }

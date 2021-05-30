@@ -66,7 +66,7 @@ __global__ void insertKernel(MultilevelTable *t) {
     } while (local[t->dim * t->len] != 0);
 
     // Copy value from shared memory to global memory
-    for (u32 i = threadIdx.x; i < 3 * 192; i += blockDim.x) {
+    for (u32 i = threadIdx.x; i < t->dim * t->len; i += blockDim.x) {
       t->val[bid * t->len * t->dim + i] = local[i];
     }
   }
@@ -77,11 +77,11 @@ __global__ void lookupKernel(MultilevelTable *t, u32 *keys, u32 *set, u32 n) {
 
   if (id < n) {
     u32 k = keys[id];
-    u32 b = keys[id] % t->bucket;
+    u32 b = xxhash(t->bucketSeed, keys[id]) % t->bucket;
 
     for (u32 d = 0; d < t->dim; d += 1) {
       u32 key = xxhash(t->seed[b * t->dim + d], k) % t->len;
-      if (k = t->val[b * t->len * t->dim + d * t->len + key]) {
+      if (k == t->val[b * t->len * t->dim + d * t->len + key]) {
         set[id] = 1;
       }
     }

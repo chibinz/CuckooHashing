@@ -21,13 +21,17 @@ int main(int argc, char **argv) {
 
   u32 *array, *set;
   cudaMalloc(&array, sizeof(u32) * entry);
-  cudaMalloc(&set, sizeof(u32) * entry);
+  cudaMallocManaged(&set, sizeof(u32) * entry);
   cudaMemset(set, 0, sizeof(u32) * entry);
   randomizeDevice(array, entry);
   syncCheck();
 
   t->insert(array);
-  // t->lookup(array, set);
+  t->lookup(array, set);
+
+  for (u32 i = 0; i < entry; i++) {
+    printf("%x\n", set[i]);
+  }
 
   printf("Total number of collisions: %u\n", t->collision);
   syncCheck();
