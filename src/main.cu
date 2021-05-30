@@ -16,7 +16,8 @@ int main(int argc, char **argv) {
   auto width = atoi(argv[1]);
   auto load = atof(argv[2]);
   auto entry = (u32)((1 << width) * load);
-  auto t = new DeviceTable(1 << width, entry);
+  // auto t = new DeviceTable(1 << width, entry);
+  auto t = new MultilevelTable(1 << width, entry);
 
   u32 *array, *set;
   cudaMalloc(&array, sizeof(u32) * entry);

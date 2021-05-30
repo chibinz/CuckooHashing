@@ -1,4 +1,5 @@
 #include <cstdio>
+#include <cstdlib>
 
 #include "cuda.h"
 #include "cuda_runtime.h"
@@ -42,7 +43,7 @@ __global__ void insertKernel(MultilevelTable *t) {
 
     for (u32 i = 0; i < t->threshold && k != empty; i += 1) {
       u32 d = i % t->dim;
-      u32 key = xxhash(t->seed[d], k) % t->len;
+      u32 key = xxhash(t->seed[bid * t->dim + d], k) % t->len;
       k = atomicExch(&local[d * t->len + key], k);
       // k = atomicExch(&t->val[bid * t->len * t->dim + d * t->len + key], k);
     }
@@ -59,7 +60,21 @@ __global__ void insertKernel(MultilevelTable *t) {
   }
 }
 
-__global__ void lookupKernel(MultilevelTable *T, u32 *k) {}
+__global__ void lookupKernel(MultilevelTable *t, u32 *keys, u32 *set, u32 n) {
+  u32 id = threadIdx.x + blockDim.x * blockIdx.x;
+
+  if (id < n) {
+    u32 k = keys[id];
+    u32 b = keys[id] % t->bucket;
+
+    for (u32 d = 0; d < t->dim; d += 1) {
+      u32 key = xxhash(t->seed[b * t->dim + d], k) % t->len;
+      if (k = t->val[b * t->len * t->dim + d * t->len + key]) {
+        set[id] = 1;
+      }
+    }
+  }
+}
 
 } // namespace
 
@@ -68,6 +83,7 @@ MultilevelTable::MultilevelTable(u32 capacity, u32 entry) {
   len = 192;
   size = entry;
   collision = 0;
+  bucketSeed = rand();
   bucketCapacity = 512;
   bucket = ceil(capacity, bucketCapacity);
   thread = bucketCapacity;
@@ -100,7 +116,7 @@ void MultilevelTable::insert(u32 *k) {
   } while (collision > 0);
 }
 
-void MultilevelTable::lookup(u32 *k) {
-  lookupKernel<<<block, thread>>>(this, k);
+void MultilevelTable::lookup(u32 *k, u32 *s) {
+  lookupKernel<<<block, thread>>>(this, k, s, size);
   syncCheck();
 }
