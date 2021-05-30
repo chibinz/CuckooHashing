@@ -13,13 +13,14 @@ int main(int argc, char **argv) {
     return -1;
   }
 
-  int width = atoi(argv[1]);
-  double load = atof(argv[2]);
-  auto t = new DeviceTable(1 << 25, 1 << width);
+  auto width = atoi(argv[1]);
+  auto load = atof(argv[2]);
+  auto entry = (u32)((1 << width) * load);
+  auto t = new DeviceTable(1 << width, entry);
 
   u32 *array;
-  cudaMallocManaged(&array, sizeof(u32) * t->size);
-  randomizeDevice(array, t->size);
+  cudaMalloc(&array, sizeof(u32) * entry);
+  randomizeDevice(array, entry);
   syncCheck();
 
   t->insert(array);

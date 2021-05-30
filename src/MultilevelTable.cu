@@ -72,7 +72,7 @@ void test() {
 
   u32 *array;
   cudaMallocManaged(&array, sizeof(u32) * numEntries);
-  randomize(array, numEntries);
+  randomizeDevice(array, numEntries);
   syncCheck();
 
   bucketInput<<<entryBlocks, numThreads>>>(t, array, numEntries);

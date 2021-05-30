@@ -33,41 +33,20 @@ struct DeviceTable {
   /// Number of thread per block
   u32 thread;
 
+  /// Overriden by CudaMallocManaged to make use of UMA
+  void *operator new(usize size);
+  /// Overriden by CudaFree
+  void operator delete(void *p);
+
   DeviceTable() = default;
-
-  DeviceTable(u32 capacity, u32 inputSize) {
-    dim = 3;
-    len = capacity / dim;
-    size = inputSize;
-    threshold = 4 * (dim * len);
-    collision = 0;
-    thread = 1024;
-    block = inputSize / thread;
-
-    cudaMallocManaged(&val, sizeof(u32) * dim * len);
-    cudaMallocManaged(&seed, sizeof(u32) * dim);
-    syncCheck();
-  }
-
-  ~DeviceTable() {
-    cudaFree(val);
-    cudaFree(seed);
-  }
-
-  void *operator new(usize size) {
-    void *ret = nullptr;
-    cudaMallocManaged(&ret, size);
-    return ret;
-  }
-
-  void operator delete(void *p) { cudaFree(p); }
-
-  void reset() {
-    cudaMemset(val, -1, sizeof(u32) * dim * len);
-    randomizeDevice(seed, dim);
-    syncCheck();
-  }
-
+  /// Static hashing with input size known before hand
+  DeviceTable(u32 capacity, u32 entry);
+  /// Free `val` and `seed`
+  ~DeviceTable();
+  /// Generate new `seed` and set `val` to `empty`
+  void reset();
+  /// Batched insert
   void insert(u32 *v);
+  /// Batched lookup
   void lookup(u32 *k);
 };

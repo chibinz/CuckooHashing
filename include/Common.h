@@ -18,7 +18,11 @@ void swap(u32 *a, u32 *b) {
   *b = temp;
 }
 
-void randomize(u32 *array, u32 n) {
+u32 ceil(u32 a, u32 b) {
+  return a / b + !!(a % b);
+}
+
+void randomizeHost(u32 *array, u32 n) {
   for (usize i = 0; i < n; i += 1) {
     array[i] = xxhash(i, array[i]);
   }

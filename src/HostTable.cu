@@ -11,9 +11,9 @@
 HostTable::HostTable(u32 len, u32 dim) : len(len), dim(dim), size(0) {
   val = new u32[len * dim];
   seed = new u32[dim];
-  threshold = bit_width(4 * dim * len);
+  threshold = 4 * bit_width(dim * len);
 
-  randomize(seed, dim);
+  randomizeHost(seed, dim);
   memset(val, (i32)(empty), sizeof(u32) * len * dim);
 }
 
@@ -55,7 +55,7 @@ void HostTable::rehash(u32 v) {
   u32 *old = val;
   val = new u32[capacity()];
 
-  randomize(seed, dim);
+  randomizeHost(seed, dim);
   memset(val, (i32)(empty), sizeof(u32) * dim * len);
 
   for (usize i = 0; i < capacity(); i += 1) {

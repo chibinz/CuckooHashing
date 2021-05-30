@@ -27,7 +27,7 @@ struct MultilevelTable : public DeviceTable {
     cudaMallocManaged(&bucketData, sizeof(u32) * bucketCapacity * bucket);
 
     cudaMemset(val, -1, sizeof(u32) * dim * len * bucket);
-    randomize(seed, dim * bucket);
+    randomizeDevice(seed, dim * bucket);
   }
 
   /// Destructor of `DeviceTable` will free `val` and `seed`
