@@ -8,13 +8,19 @@
 #include "MultilevelTable.h"
 
 int main(int argc, char **argv) {
-  u32 numEntries = 1 << 24;
+  if (argc != 3) {
+    printf("Usage: %s <width> <load-factor>", argv[0]);
+    return -1;
+  }
 
-  auto t = new DeviceTable(1 << 25, numEntries);
+  int width = atoi(argv[1]);
+  double load = atof(argv[2]);
+  auto t = new DeviceTable(1 << 25, 1 << width);
 
   u32 *array;
-  cudaMallocManaged(&array, sizeof(u32) * numEntries);
-  randomizeGPU(array, numEntries);
+  cudaMallocManaged(&array, sizeof(u32) * t->size);
+  randomizeDevice(array, t->size);
+  syncCheck();
 
   t->insert(array);
   t->lookup(array);

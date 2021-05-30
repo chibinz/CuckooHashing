@@ -10,7 +10,7 @@
 #include "HostTable.h"
 #include "Types.h"
 
-void randomizeGPU(u32 *array, u32 n);
+void randomizeDevice(u32 *array, u32 n);
 
 /// Convenience struct to pass around as function parameter
 struct DeviceTable {
@@ -46,9 +46,6 @@ struct DeviceTable {
 
     cudaMallocManaged(&val, sizeof(u32) * dim * len);
     cudaMallocManaged(&seed, sizeof(u32) * dim);
-    cudaMemset(val, -1, sizeof(u32) * dim * len);
-    randomizeGPU(seed, dim);
-
     syncCheck();
   }
 
@@ -67,7 +64,7 @@ struct DeviceTable {
 
   void reset() {
     cudaMemset(val, -1, sizeof(u32) * dim * len);
-    randomizeGPU(seed, dim);
+    randomizeDevice(seed, dim);
     syncCheck();
   }
 

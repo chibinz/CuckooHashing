@@ -9,7 +9,9 @@
 #include "Types.h"
 #include "xxHash.h"
 
-__global__ void randomizeArray(u32 *array, u32 n) {
+namespace {
+
+__global__ void randomizeKernel(u32 *array, u32 n) {
   u32 id = threadIdx.x + blockIdx.x * blockDim.x;
 
   if (id < n) {
@@ -21,21 +23,7 @@ __global__ void randomizeArray(u32 *array, u32 n) {
   }
 }
 
-__global__ void printArray(u32 *array, u32 n) {
-  u32 id = threadIdx.x + blockIdx.x * blockDim.x;
-  if (id < n) {
-    printf("%08x: %x\n", id, array[id]);
-  }
-}
-
-__global__ void setEmpty(u32 *val, u32 capacity) {
-  u32 id = threadIdx.x + blockIdx.x * blockDim.x;
-  if (id < capacity) {
-    val[id] = empty;
-  }
-}
-
-__global__ void batchedInsert(DeviceTable *t, u32 *array, u32 n) {
+__global__ void insertKernel(DeviceTable *t, u32 *array, u32 n) {
   u32 id = threadIdx.x + blockIdx.x * blockDim.x;
 
   if (id < n) {
@@ -54,7 +42,7 @@ __global__ void batchedInsert(DeviceTable *t, u32 *array, u32 n) {
   }
 }
 
-__global__ void batchedLookup(DeviceTable *t, u32 *keys, u32 n) {
+__global__ void lookupKernel(DeviceTable *t, u32 *keys, u32 n) {
   u32 id = threadIdx.x + blockIdx.x * blockDim.x;
 
   if (id < n) {
@@ -69,28 +57,21 @@ __global__ void batchedLookup(DeviceTable *t, u32 *keys, u32 n) {
   }
 }
 
-void randomizeGPU(u32 *array, u32 n) {
-  randomizeArray<<<n / 256 + 1, 256>>>(array, n);
+} // namespace
+
+void randomizeDevice(u32 *array, u32 n) {
+  randomizeKernel<<<n / 256 + 1, 256>>>(array, n);
 }
 
 void DeviceTable::insert(u32 *v) {
-  u32 numEntries = 1 << 24;
-  u32 numThreads = 1024;
-  u32 entryBlocks = numEntries / numThreads;
-
-  batchedInsert<<<entryBlocks, numThreads>>>(this, v, numEntries);
-  syncCheck();
-  while (collision > 0) {
+  do {
     reset();
-    batchedInsert<<<entryBlocks, numThreads>>>(this, v, numEntries);
+    insertKernel<<<block, thread>>>(this, v, size);
     syncCheck();
-  }
+  } while (collision > 0);
 }
 
 void DeviceTable::lookup(u32 *k) {
-  u32 numEntries = 1 << 24;
-  u32 numThreads = 1024;
-  u32 entryBlocks = numEntries / numThreads;
-  batchedLookup<<<entryBlocks, numThreads>>>(this, k, numEntries);
+  lookupKernel<<<block, thread>>>(this, k, size);
   syncCheck();
 }
