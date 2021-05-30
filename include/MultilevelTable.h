@@ -13,26 +13,13 @@ struct MultilevelTable : public DeviceTable {
   u32 *bucketData;
 
   MultilevelTable() = default;
-
-  MultilevelTable(u32 dim, u32 len, u32 bucket, u32 bucketCapacity)
-      : bucket(bucket), bucketCapacity(bucketCapacity) {
-    this->dim = dim;
-    this->len = len;
-    threshold = 4 * bit_width(dim * len);
-    collision = 0;
-
-    cudaMallocManaged(&val, sizeof(u32) * dim * len * bucket);
-    cudaMallocManaged(&seed, sizeof(u32) * dim * bucket);
-    cudaMallocManaged(&bucketSize, sizeof(u32) * bucket);
-    cudaMallocManaged(&bucketData, sizeof(u32) * bucketCapacity * bucket);
-
-    cudaMemset(val, -1, sizeof(u32) * dim * len * bucket);
-    randomizeDevice(seed, dim * bucket);
-  }
-
+  /// Self adjusting bucket and bucket capacity;
+  MultilevelTable(u32 capacity, u32 entry);
   /// Destructor of `DeviceTable` will free `val` and `seed`
-  ~MultilevelTable() {
-    cudaFree(bucketSize);
-    cudaFree(bucketData);
-  }
+  ~MultilevelTable();
+  /// Divide input into buckets.
+  /// And then run Cuckoo Hashing on each bucket.
+  void insert(u32 *v);
+  /// Lookup keys
+  void lookup(u32 *k);
 };

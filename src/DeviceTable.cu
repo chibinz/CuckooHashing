@@ -75,10 +75,10 @@ DeviceTable::DeviceTable(u32 capacity, u32 entry) {
   dim = 3;
   len = capacity / dim;
   size = entry;
-  threshold = 4 * bit_width(capacity);
   collision = 0;
   thread = 1024;
   block = ceil(entry, thread);
+  threshold = 4 * bit_width(capacity);
 
   cudaMalloc(&val, sizeof(u32) * dim * len);
   cudaMalloc(&seed, sizeof(u32) * dim);

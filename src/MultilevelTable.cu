@@ -10,7 +10,9 @@
 #include "Types.h"
 #include "xxHash.h"
 
-__global__ void bucketInput(MultilevelTable *t, u32 *array, u32 n) {
+namespace {
+
+__global__ void divideKernel(MultilevelTable *t, u32 *array, u32 n) {
   u32 id = threadIdx.x + blockDim.x * blockIdx.x;
 
   if (id < n) {
@@ -24,7 +26,7 @@ __global__ void bucketInput(MultilevelTable *t, u32 *array, u32 n) {
   }
 }
 
-__global__ void bucketInsert(MultilevelTable *t) {
+__global__ void insertKernel(MultilevelTable *t) {
   // Declare fixed size shared memory
   __shared__ u32 local[3 * 192];
   // Initialize shared memory
@@ -57,33 +59,48 @@ __global__ void bucketInsert(MultilevelTable *t) {
   }
 }
 
-__global__ void bucketLookup(MultilevelTable *T) {}
+__global__ void lookupKernel(MultilevelTable *T, u32 *k) {}
 
-void test() {
-  u32 dim = 3;
-  u32 len = 192;
-  u32 bucketCapacity = 512;
-  u32 numEntries = 1 << 24;
-  u32 bucket = numEntries / 409;
-  u32 numThreads = 1024;
-  u32 entryBlocks = numEntries / numThreads;
+} // namespace
 
-  auto t = new MultilevelTable(dim, len, bucket, bucketCapacity);
+MultilevelTable::MultilevelTable(u32 capacity, u32 entry) {
+  dim = 3;
+  len = 192;
+  size = entry;
+  collision = 0;
+  bucketCapacity = 512;
+  bucket = ceil(capacity, bucketCapacity);
+  thread = bucketCapacity;
+  block = ceil(entry, thread);
+  threshold = 4 * bit_width(dim * len);
 
-  u32 *array;
-  cudaMallocManaged(&array, sizeof(u32) * numEntries);
-  randomizeDevice(array, numEntries);
+  cudaMalloc(&val, sizeof(u32) * dim * len * bucket);
+  cudaMalloc(&seed, sizeof(u32) * dim * bucket);
+  cudaMalloc(&bucketSize, sizeof(u32) * bucket);
+  cudaMalloc(&bucketData, sizeof(u32) * bucketCapacity * bucket);
+
+  cudaMemset(val, -1, sizeof(u32) * dim * len * bucket);
+  cudaMemset(bucketSize, 0, sizeof(u32) * bucket);
+  randomizeDevice(seed, dim * bucket);
+}
+
+MultilevelTable::~MultilevelTable() {
+  cudaFree(bucketSize);
+  cudaFree(bucketData);
+}
+
+void MultilevelTable::insert(u32 *v) {
+  divideKernel<<<block, thread>>>(this, v, size);
   syncCheck();
 
-  bucketInput<<<entryBlocks, numThreads>>>(t, array, numEntries);
-  syncCheck();
+  do {
+    reset();
+    insertKernel<<<block, thread>>>(this);
+    syncCheck();
+  } while (collision > 0);
+}
 
-  bucketInsert<<<bucket, bucketCapacity>>>(t);
-  syncCheck();
-
-  printf("Total number of collisions: %u\n", t->collision);
-  cudaFree(array);
-  delete t;
-
+void MultilevelTable::lookup(u32 *k) {
+  lookupKernel<<<block, thread>>>(this, k);
   syncCheck();
 }
