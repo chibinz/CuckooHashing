@@ -30,7 +30,8 @@ __global__ void divideKernel(MultilevelTable *t, u32 *array, u32 n) {
 
 __global__ void insertKernel(MultilevelTable *t) {
   // Declare fixed size shared memory
-  __shared__ u32 local[3 * 192];
+  extern __shared__ u32 local[];
+
   // Initialize shared memory
   for (u32 i = threadIdx.x; i < t->dim * t->len; i += blockDim.x)
     local[i] = empty;
@@ -42,21 +43,31 @@ __global__ void insertKernel(MultilevelTable *t) {
   if (tid < t->bucketSize[bid]) {
     u32 k = t->bucketData[bid * t->bucketCapacity + tid];
 
-    for (u32 i = 0; i < t->threshold && k != empty; i += 1) {
-      u32 d = i % t->dim;
-      u32 key = xxhash(t->seed[bid * t->dim + d], k) % t->len;
-      k = atomicExch(&local[d * t->len + key], k);
-      // k = atomicExch(&t->val[bid * t->len * t->dim + d * t->len + key], k);
-    }
+    do {
+      // Record collision in shared memory
+      local[t->dim * t->len] = 0;
 
-    // Record number of collisions
-    if (k != empty) {
-      atomicAdd(&t->collision, 1);
-    } else {
-      // Copy value from shared memory to global memory
-      for (u32 i = threadIdx.x; i < 3 * 192; i += blockDim.x) {
-        t->val[bid * t->len * t->dim + i] = local[i];
+      for (u32 i = 0; i < t->threshold && k != empty; i += 1) {
+        u32 d = i % t->dim;
+        u32 key = xxhash(t->seed[bid * t->dim + d], k) % t->len;
+        k = atomicExch(&local[d * t->len + key], k);
+        // k = atomicExch(&t->val[bid * t->len * t->dim + d * t->len + key], k);
       }
+
+      // Guard to avoid bank conflict
+      if (local[t->dim * t->len] == 0 && k != empty) {
+        local[t->dim * t->len] = 1;
+        // for (u32 d = 0; d < t->dim; d += 1) {
+        //   t->seed[bid * t->dim + d] = xxhash(tid, t->seed[bid * t->dim + d]);
+        // }
+      }
+      __syncthreads();
+
+    } while (local[t->dim * t->len] != 0);
+
+    // Copy value from shared memory to global memory
+    for (u32 i = threadIdx.x; i < 3 * 192; i += blockDim.x) {
+      t->val[bid * t->len * t->dim + i] = local[i];
     }
   }
 }
@@ -107,17 +118,15 @@ MultilevelTable::~MultilevelTable() {
 
 void MultilevelTable::insert(u32 *k) {
   do {
+    collision = 0;
     bucketSeed = rand();
     cudaMemset(bucketSize, 0, sizeof(u32) * bucket);
     divideKernel<<<block, thread>>>(this, k, size);
     syncCheck();
   } while (collision > 0);
 
-  do {
-    reset();
-    insertKernel<<<block, thread>>>(this);
-    syncCheck();
-  } while (collision > 0);
+  insertKernel<<<block, thread, sizeof(u32) * (dim * len + 1)>>>(this);
+  syncCheck();
 }
 
 void MultilevelTable::lookup(u32 *k, u32 *s) {
