@@ -16,15 +16,17 @@ int main(int argc, char **argv) {
   auto width = atoi(argv[1]);
   auto load = atof(argv[2]);
   auto entry = (u32)((1 << width) * load);
-  auto t = new MultilevelTable(1 << width, entry);
+  auto t = new DeviceTable(1 << width, entry);
 
-  u32 *array;
+  u32 *array, *set;
   cudaMalloc(&array, sizeof(u32) * entry);
+  cudaMalloc(&set, sizeof(u32) * entry);
+  cudaMemset(set, 0, sizeof(u32) * entry);
   randomizeDevice(array, entry);
   syncCheck();
 
   t->insert(array);
-  t->lookup(array);
+  t->lookup(array, set);
 
   printf("Total number of collisions: %u\n", t->collision);
   syncCheck();

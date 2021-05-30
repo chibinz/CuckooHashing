@@ -19,7 +19,7 @@ struct MultilevelTable : public DeviceTable {
   ~MultilevelTable();
   /// Divide input into buckets.
   /// And then run Cuckoo Hashing on each bucket.
-  void insert(u32 *v);
+  void insert(u32 *k);
   /// Lookup keys
   void lookup(u32 *k);
 };

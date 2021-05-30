@@ -46,7 +46,7 @@ struct DeviceTable {
   /// Generate new `seed` and set `val` to `empty`
   void reset();
   /// Batched insert
-  void insert(u32 *v);
+  void insert(u32 *k);
   /// Batched lookup
-  void lookup(u32 *k);
+  void lookup(u32 *k, u32 *s);
 };

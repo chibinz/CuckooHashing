@@ -27,31 +27,31 @@ __global__ void insertKernel(DeviceTable *t, u32 *array, u32 n) {
   u32 id = threadIdx.x + blockIdx.x * blockDim.x;
 
   if (id < n) {
-    u32 v = array[id];
+    u32 k = array[id];
 
-    for (u32 i = 0; i < t->threshold && v != empty; i += 1) {
-      u32 b = i % t->dim;
-      u32 key = xxhash(t->seed[b], v) % t->len;
-      v = atomicExch(&t->val[b * t->len + key], v);
+    for (u32 i = 0; i < t->threshold && k != empty; i += 1) {
+      u32 d = i % t->dim;
+      u32 key = xxhash(t->seed[d], k) % t->len;
+      k = atomicExch(&t->val[d * t->len + key], k);
     }
 
     // Record number of collisions
-    if (v != empty) {
+    if (k != empty) {
       atomicAdd(&t->collision, 1);
     }
   }
 }
 
-__global__ void lookupKernel(DeviceTable *t, u32 *keys, u32 n) {
+__global__ void lookupKernel(DeviceTable *t, u32 *keys, u32 *set, u32 n) {
   u32 id = threadIdx.x + blockIdx.x * blockDim.x;
 
   if (id < n) {
-    u32 v = keys[id];
+    u32 k = keys[id];
 
-    for (u32 i = 0; i < t->dim; i += 1) {
-      u32 key = xxhash(t->seed[i], v) % t->len;
-      if (t->val[i * t->len + key] == v) {
-        break;
+    for (u32 d = 0; d < t->dim; d += 1) {
+      u32 key = xxhash(t->seed[d], k) % t->len;
+      if (t->val[d * t->len + key] == k) {
+        set[id] = 1;
       }
     }
   }
@@ -60,7 +60,7 @@ __global__ void lookupKernel(DeviceTable *t, u32 *keys, u32 n) {
 } // namespace
 
 void randomizeDevice(u32 *array, u32 n) {
-  randomizeKernel<<<n / 256 + 1, 256>>>(array, n);
+  randomizeKernel<<<ceil(n, 256), 256>>>(array, n);
 }
 
 void *DeviceTable::operator new(usize size) {
@@ -73,7 +73,7 @@ void DeviceTable::operator delete(void *p) { cudaFree(p); }
 
 DeviceTable::DeviceTable(u32 capacity, u32 entry) {
   dim = 3;
-  len = capacity / dim;
+  len = ceil(ceil(capacity, dim), 32) * 32;
   size = entry;
   collision = 0;
   thread = 1024;
@@ -98,15 +98,15 @@ void DeviceTable::reset() {
   syncCheck();
 }
 
-void DeviceTable::insert(u32 *v) {
+void DeviceTable::insert(u32 *k) {
   do {
     reset();
-    insertKernel<<<block, thread>>>(this, v, size);
+    insertKernel<<<block, thread>>>(this, k, size);
     syncCheck();
   } while (collision > 0);
 }
 
-void DeviceTable::lookup(u32 *k) {
-  lookupKernel<<<block, thread>>>(this, k, size);
+void DeviceTable::lookup(u32 *k, u32 *s) {
+  lookupKernel<<<block, thread>>>(this, k, s, size);
   syncCheck();
 }

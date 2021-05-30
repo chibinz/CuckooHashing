@@ -30,7 +30,7 @@ __global__ void insertKernel(MultilevelTable *t) {
   // Declare fixed size shared memory
   __shared__ u32 local[3 * 192];
   // Initialize shared memory
-  for (u32 i = threadIdx.x; i < 3 * 192; i += blockDim.x)
+  for (u32 i = threadIdx.x; i < t->dim * t->len; i += blockDim.x)
     local[i] = empty;
   __syncthreads();
 
@@ -38,17 +38,17 @@ __global__ void insertKernel(MultilevelTable *t) {
   u32 tid = threadIdx.x;
 
   if (tid < t->bucketSize[bid]) {
-    u32 v = t->bucketData[bid * t->bucketCapacity + tid];
+    u32 k = t->bucketData[bid * t->bucketCapacity + tid];
 
-    for (u32 i = 0; i < t->threshold && v != empty; i += 1) {
+    for (u32 i = 0; i < t->threshold && k != empty; i += 1) {
       u32 d = i % t->dim;
-      u32 key = xxhash(t->seed[d], v) % t->len;
-      v = atomicExch(&local[d * t->len + key], v);
-      // v = atomicExch(&t->val[bid * t->len * t->dim + d * t->len + key], v);
+      u32 key = xxhash(t->seed[d], k) % t->len;
+      k = atomicExch(&local[d * t->len + key], k);
+      // k = atomicExch(&t->val[bid * t->len * t->dim + d * t->len + key], k);
     }
 
     // Record number of collisions
-    if (v != empty) {
+    if (k != empty) {
       atomicAdd(&t->collision, 1);
     } else {
       // Copy value from shared memory to global memory
@@ -89,8 +89,8 @@ MultilevelTable::~MultilevelTable() {
   cudaFree(bucketData);
 }
 
-void MultilevelTable::insert(u32 *v) {
-  divideKernel<<<block, thread>>>(this, v, size);
+void MultilevelTable::insert(u32 *k) {
+  divideKernel<<<block, thread>>>(this, k, size);
   syncCheck();
 
   do {
