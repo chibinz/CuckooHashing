@@ -20,20 +20,26 @@ int main(int argc, char **argv) {
   auto t = new MultilevelTable(1 << width, entry);
 
   u32 *array, *set;
-  cudaMalloc(&array, sizeof(u32) * entry);
+  cudaMallocManaged(&array, sizeof(u32) * entry);
   cudaMallocManaged(&set, sizeof(u32) * entry);
+  syncCheck();
+  for (u32 i = 0; i < entry; i++) {
+    array[i] = i;
+  }
   cudaMemset(set, 0, sizeof(u32) * entry);
-  randomizeDevice(array, entry);
+  // randomizeDevice(array, entry);
   syncCheck();
 
   t->insert(array);
   t->lookup(array, set);
 
+  syncCheck();
   for (u32 i = 0; i < entry; i++) {
-    printf("%x\n", set[i]);
+    printf("%d\n", set[i]);
   }
+  syncCheck();
 
-  printf("Total number of collisions: %u\n", t->collision);
+  // printf("Total number of collisions: %u\n", t->collision);
   syncCheck();
 
   cudaFree(array);

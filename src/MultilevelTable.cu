@@ -29,7 +29,7 @@ __global__ void divideKernel(MultilevelTable *t, u32 *array, u32 n) {
 }
 
 __global__ void insertKernel(MultilevelTable *t) {
-  // Declare fixed size shared memory
+  // Declare shared memory size of `t->dim * t->len`
   extern __shared__ u32 local[];
 
   // Initialize shared memory
@@ -42,6 +42,7 @@ __global__ void insertKernel(MultilevelTable *t) {
 
   if (tid < t->bucketSize[bid]) {
     u32 k = t->bucketData[bid * t->bucketCapacity + tid];
+    // printf("%d\n", k);
 
     do {
       // Record collision in shared memory
@@ -50,8 +51,8 @@ __global__ void insertKernel(MultilevelTable *t) {
       for (u32 i = 0; i < t->threshold && k != empty; i += 1) {
         u32 d = i % t->dim;
         u32 key = xxhash(t->seed[bid * t->dim + d], k) % t->len;
-        k = atomicExch(&local[d * t->len + key], k);
-        // k = atomicExch(&t->val[bid * t->len * t->dim + d * t->len + key], k);
+        // k = atomicExch(&local[d * t->len + key], k);
+        k = atomicExch(&t->val[bid * t->len * t->dim + d * t->len + key], k);
       }
 
       // Guard to avoid bank conflict
@@ -64,11 +65,12 @@ __global__ void insertKernel(MultilevelTable *t) {
       __syncthreads();
 
     } while (local[t->dim * t->len] != 0);
+  }
 
-    // Copy value from shared memory to global memory
-    for (u32 i = threadIdx.x; i < t->dim * t->len; i += blockDim.x) {
-      t->val[bid * t->len * t->dim + i] = local[i];
-    }
+  // Copy value from shared memory to global memory
+  for (u32 i = threadIdx.x; i < t->dim * t->len; i += blockDim.x) {
+    // t->val[bid * t->len * t->dim + i] = local[i];
+    // printf("%d\n", local[i]);
   }
 }
 
@@ -101,10 +103,10 @@ MultilevelTable::MultilevelTable(u32 capacity, u32 entry) {
   block = ceil(entry, thread);
   threshold = 4 * bit_width(dim * len);
 
-  cudaMalloc(&val, sizeof(u32) * dim * len * bucket);
-  cudaMalloc(&seed, sizeof(u32) * dim * bucket);
-  cudaMalloc(&bucketSize, sizeof(u32) * bucket);
-  cudaMalloc(&bucketData, sizeof(u32) * bucketCapacity * bucket);
+  cudaMallocManaged(&val, sizeof(u32) * dim * len * bucket);
+  cudaMallocManaged(&seed, sizeof(u32) * dim * bucket);
+  cudaMallocManaged(&bucketSize, sizeof(u32) * bucket);
+  cudaMallocManaged(&bucketData, sizeof(u32) * bucketCapacity * bucket);
 
   cudaMemset(val, -1, sizeof(u32) * dim * len * bucket);
   cudaMemset(bucketSize, 0, sizeof(u32) * bucket);
