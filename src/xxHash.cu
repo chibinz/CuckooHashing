@@ -20,7 +20,7 @@ __host__ __device__ u32 xxhash(u32 seed, u32 v) {
   acc = rotate_left(acc, 17) * PRIME4;
 
   u8 *byte = (u8 *)(&v);
-  for (usize i = 0; i < 4; i += 1) {
+  for (u32 i = 0; i < 4; i += 1) {
     acc = acc + byte[i] * PRIME5;
     acc = rotate_left(acc, 11) * PRIME1;
   }

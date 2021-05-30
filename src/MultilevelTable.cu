@@ -17,12 +17,13 @@ __global__ void divideKernel(MultilevelTable *t, u32 *array, u32 n) {
   u32 id = threadIdx.x + blockDim.x * blockIdx.x;
 
   if (id < n) {
-    u32 b = array[id] % t->bucket;
+    u32 b = xxhash(t->bucketSeed, array[id]) % t->bucket;
     u32 old = atomicAdd(&t->bucketSize[b], 1);
     if (old < t->bucketCapacity) {
       t->bucketData[b * t->bucketCapacity + old] = array[id];
     } else {
-      printf("Bucket overflow! %u\n", blockIdx.x);
+      printf("Bucket overflow! %u\n", b);
+      atomicAdd(&t->collision, 1);
     }
   }
 }
@@ -83,7 +84,6 @@ MultilevelTable::MultilevelTable(u32 capacity, u32 entry) {
   len = 192;
   size = entry;
   collision = 0;
-  bucketSeed = rand();
   bucketCapacity = 512;
   bucket = ceil(capacity, bucketCapacity);
   thread = bucketCapacity;
@@ -106,8 +106,12 @@ MultilevelTable::~MultilevelTable() {
 }
 
 void MultilevelTable::insert(u32 *k) {
-  divideKernel<<<block, thread>>>(this, k, size);
-  syncCheck();
+  do {
+    bucketSeed = rand();
+    cudaMemset(bucketSize, 0, sizeof(u32) * bucket);
+    divideKernel<<<block, thread>>>(this, k, size);
+    syncCheck();
+  } while (collision > 0);
 
   do {
     reset();

@@ -27,7 +27,7 @@ int main(int argc, char **argv) {
   syncCheck();
 
   t->insert(array);
-  t->lookup(array, set);
+  // t->lookup(array, set);
 
   printf("Total number of collisions: %u\n", t->collision);
   syncCheck();
