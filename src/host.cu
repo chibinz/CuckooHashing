@@ -8,9 +8,9 @@
 #include "types.h"
 #include "xxhash.h"
 
-static void randomizeHost(u32 *array, u32 n) {
+static void randomizeHost(u32 *a, u32 n) {
   for (usize i = 0; i < n; i += 1) {
-    array[i] = xxhash(i, array[i]);
+    a[i] = xxhash(i, a[i]);
   }
 }
 

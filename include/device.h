@@ -22,8 +22,6 @@ struct DeviceTable {
   u32 dim;
   /// Length of a single subtable
   u32 len;
-  /// Number of expected input entries
-  u32 size;
   /// Number of iterations before rehash happens
   u32 threshold;
   /// Total number of collisions occurred
@@ -40,13 +38,13 @@ struct DeviceTable {
 
   DeviceTable() = default;
   /// Static hashing with input size known before hand
-  DeviceTable(u32 capacity, u32 entry);
+  DeviceTable(u32 capacity);
   /// Free `val` and `seed`
   ~DeviceTable();
   /// Generate new `seed` and set `val` to `empty`
   void reset();
   /// Batched insert
-  void insert(u32 *k);
+  void insert(u32 *k, u32 n);
   /// Batched lookup
-  void lookup(u32 *k, u32 *s);
+  void lookup(u32 *k, u32 *s, u32 n);
 };

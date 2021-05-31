@@ -13,14 +13,14 @@
 
 namespace {
 
-__global__ void divideKernel(MultilevelTable *t, u32 *array, u32 n) {
+__global__ void divideKernel(MultilevelTable *t, u32 *key, u32 n) {
   u32 id = threadIdx.x + blockDim.x * blockIdx.x;
 
   if (id < n) {
-    u32 b = xxhash(t->bucketSeed, array[id]) % t->bucket;
+    u32 b = xxhash(t->bucketSeed, key[id]) % t->bucket;
     u32 old = atomicAdd(&t->bucketSize[b], 1);
     if (old < t->bucketCapacity) {
-      t->bucketData[b * t->bucketCapacity + old] = array[id];
+      t->bucketData[b * t->bucketCapacity + old] = key[id];
     } else {
       printf("Bucket overflow! %u\n", b);
       atomicAdd(&t->collision, 1);
@@ -42,7 +42,6 @@ __global__ void insertKernel(MultilevelTable *t) {
 
   if (tid < t->bucketSize[bid]) {
     u32 k = t->bucketData[bid * t->bucketCapacity + tid];
-    // printf("%d\n", k);
 
     do {
       // Record collision in shared memory
@@ -70,20 +69,19 @@ __global__ void insertKernel(MultilevelTable *t) {
   // Copy value from shared memory to global memory
   for (u32 i = threadIdx.x; i < t->dim * t->len; i += blockDim.x) {
     // t->val[bid * t->len * t->dim + i] = local[i];
-    // printf("%d\n", local[i]);
   }
 }
 
-__global__ void lookupKernel(MultilevelTable *t, u32 *keys, u32 *set, u32 n) {
+__global__ void lookupKernel(MultilevelTable *t, u32 *key, u32 *set, u32 n) {
   u32 id = threadIdx.x + blockDim.x * blockIdx.x;
 
   if (id < n) {
-    u32 k = keys[id];
-    u32 b = xxhash(t->bucketSeed, keys[id]) % t->bucket;
+    u32 k = key[id];
+    u32 b = xxhash(t->bucketSeed, key[id]) % t->bucket;
 
     for (u32 d = 0; d < t->dim; d += 1) {
-      u32 key = xxhash(t->seed[b * t->dim + d], k) % t->len;
-      if (k == t->val[b * t->len * t->dim + d * t->len + key]) {
+      u32 offset = xxhash(t->seed[b * t->dim + d], k) % t->len;
+      if (k == t->val[b * t->len * t->dim + d * t->len + offset]) {
         set[id] = 1;
       }
     }
@@ -92,10 +90,9 @@ __global__ void lookupKernel(MultilevelTable *t, u32 *keys, u32 *set, u32 n) {
 
 } // namespace
 
-MultilevelTable::MultilevelTable(u32 capacity, u32 entry) {
+MultilevelTable::MultilevelTable(u32 capacity) {
   dim = 3;
   len = 192;
-  size = entry;
   collision = 0;
   bucketCapacity = 512;
   bucket = ceil(capacity, bucketCapacity);
@@ -103,10 +100,10 @@ MultilevelTable::MultilevelTable(u32 capacity, u32 entry) {
   block = bucket;
   threshold = 4 * bit_width(dim * len);
 
-  cudaMallocManaged(&val, sizeof(u32) * dim * len * bucket);
-  cudaMallocManaged(&seed, sizeof(u32) * dim * bucket);
-  cudaMallocManaged(&bucketSize, sizeof(u32) * bucket);
-  cudaMallocManaged(&bucketData, sizeof(u32) * bucketCapacity * bucket);
+  cudaMalloc(&val, sizeof(u32) * dim * len * bucket);
+  cudaMalloc(&seed, sizeof(u32) * dim * bucket);
+  cudaMalloc(&bucketSize, sizeof(u32) * bucket);
+  cudaMalloc(&bucketData, sizeof(u32) * bucketCapacity * bucket);
 
   cudaMemset(val, -1, sizeof(u32) * dim * len * bucket);
   cudaMemset(bucketSize, 0, sizeof(u32) * bucket);
@@ -118,12 +115,12 @@ MultilevelTable::~MultilevelTable() {
   cudaFree(bucketData);
 }
 
-void MultilevelTable::insert(u32 *k) {
+void MultilevelTable::insert(u32 *k, u32 n) {
   do {
     collision = 0;
     bucketSeed = rand();
     cudaMemset(bucketSize, 0, sizeof(u32) * bucket);
-    divideKernel<<<block, thread>>>(this, k, size);
+    divideKernel<<<block, thread>>>(this, k, n);
     syncCheck();
   } while (collision > 0);
 
@@ -131,7 +128,7 @@ void MultilevelTable::insert(u32 *k) {
   syncCheck();
 }
 
-void MultilevelTable::lookup(u32 *k, u32 *s) {
-  lookupKernel<<<block, thread>>>(this, k, s, size);
+void MultilevelTable::lookup(u32 *k, u32 *s, u32 n) {
+  lookupKernel<<<block, thread>>>(this, k, s, n);
   syncCheck();
 }

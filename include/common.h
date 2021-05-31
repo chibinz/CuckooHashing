@@ -12,24 +12,23 @@ constexpr u32 empty = (u32)(-1);
 
 namespace {
 
+#define syncCheck()                                                            \
+  do {                                                                         \
+    cudaDeviceSynchronize();                                                   \
+    auto err = cudaGetLastError();                                             \
+    if (err != cudaSuccess) {                                                  \
+      printf("%s:%d %s!\n", __FILE__, __LINE__, cudaGetErrorString(err));      \
+      exit(-1);                                                                \
+    }                                                                          \
+  } while (0);
+
 void swap(u32 *a, u32 *b) {
   u32 temp = *a;
   *a = *b;
   *b = temp;
 }
 
-u32 ceil(u32 a, u32 b) {
-  return a / b + !!(a % b);
-}
-
-void syncCheck() {
-  cudaDeviceSynchronize();
-  auto err = cudaGetLastError(); // Get error code
-  if (err != cudaSuccess) {
-    printf("Error: %s!\n", cudaGetErrorString(err));
-    exit(-1);
-  }
-}
+u32 ceil(u32 a, u32 b) { return a / b + !!(a % b); }
 
 u32 bit_width(u32 x) {
   u32 w = 0;
