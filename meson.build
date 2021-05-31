@@ -8,9 +8,9 @@ add_global_arguments('-dc', language : 'cuda')
 
 executable('chash',
            'src/main.cu',
-           'src/DeviceTable.cu',
-           'src/HostTable.cu',
-           'src/MultilevelTable.cu',
-           'src/xxHash.cu',
+           'src/device.cu',
+           'src/host.cu',
+           'src/multi.cu',
+           'src/xxhash.cu',
            install : true,
            include_directories : incdir)

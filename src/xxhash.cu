@@ -1,7 +1,7 @@
 #include <stdlib.h>
 
-#include "Types.h"
-#include "xxHash.h"
+#include "types.h"
+#include "xxhash.h"
 
 static const u32 PRIME1 = 0x9E3779B1U;
 static const u32 PRIME2 = 0x85EBCA77U;

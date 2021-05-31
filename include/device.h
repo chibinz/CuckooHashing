@@ -6,9 +6,9 @@
 #include "cuda.h"
 #include "cuda_runtime.h"
 
-#include "Common.h"
-#include "HostTable.h"
-#include "Types.h"
+#include "common.h"
+#include "host.h"
+#include "types.h"
 
 void randomizeDevice(u32 *array, u32 n);
 

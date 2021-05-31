@@ -6,10 +6,10 @@
 #include "device_functions.h"
 #include "device_launch_parameters.h"
 
-#include "Common.h"
-#include "MultilevelTable.h"
-#include "Types.h"
-#include "xxHash.h"
+#include "common.h"
+#include "multi.h"
+#include "types.h"
+#include "xxhash.h"
 
 namespace {
 
@@ -100,7 +100,7 @@ MultilevelTable::MultilevelTable(u32 capacity, u32 entry) {
   bucketCapacity = 512;
   bucket = ceil(capacity, bucketCapacity);
   thread = bucketCapacity;
-  block = ceil(entry, thread);
+  block = bucket;
   threshold = 4 * bit_width(dim * len);
 
   cudaMallocManaged(&val, sizeof(u32) * dim * len * bucket);

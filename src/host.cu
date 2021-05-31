@@ -3,10 +3,16 @@
 #include <cstdio>
 #include <cstring>
 
-#include "Common.h"
-#include "HostTable.h"
-#include "Types.h"
-#include "xxHash.h"
+#include "common.h"
+#include "host.h"
+#include "types.h"
+#include "xxhash.h"
+
+static void randomizeHost(u32 *array, u32 n) {
+  for (usize i = 0; i < n; i += 1) {
+    array[i] = xxhash(i, array[i]);
+  }
+}
 
 HostTable::HostTable(u32 len, u32 dim) : len(len), dim(dim), size(0) {
   val = new u32[len * dim];

@@ -4,10 +4,10 @@
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
 
-#include "Common.h"
-#include "DeviceTable.h"
-#include "Types.h"
-#include "xxHash.h"
+#include "common.h"
+#include "device.h"
+#include "types.h"
+#include "xxhash.h"
 
 namespace {
 
