@@ -20,22 +20,22 @@ int main(int argc, char **argv) {
   // auto t = new DeviceTable(1 << width);
   auto t = new MultilevelTable(1 << width);
 
-  insertion();
+  lookup();
 
-  u32 *key, *set;
-  cudaMalloc(&key, sizeof(u32) * entry);
-  cudaMalloc(&set, sizeof(u32) * entry);
-  cudaMemset(set, 0, sizeof(u32) * entry);
-  randomizeDevice(key, entry);
-  syncCheck();
+  // u32 *key, *set;
+  // cudaMalloc(&key, sizeof(u32) * entry);
+  // cudaMalloc(&set, sizeof(u32) * entry);
+  // cudaMemset(set, 0, sizeof(u32) * entry);
+  // randomizeDevice(key, entry);
+  // syncCheck();
 
-  t->insert(key, entry);
-  t->lookup(key, set, entry);
+  // t->insert(key, entry);
+  // t->lookup(key, set, entry);
 
-  syncCheck();
+  // syncCheck();
 
-  cudaFree(key);
-  delete t;
+  // cudaFree(key);
+  // delete t;
 
   return 0;
 }

@@ -108,6 +108,7 @@ MultilevelTable::MultilevelTable(u32 capacity) {
   cudaMemset(val, -1, sizeof(u32) * dim * len * bucket);
   cudaMemset(bucketSize, 0, sizeof(u32) * bucket);
   randomizeDevice(seed, dim * bucket);
+  syncCheck();
 }
 
 MultilevelTable::~MultilevelTable() {
