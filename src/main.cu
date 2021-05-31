@@ -3,6 +3,7 @@
 
 #include "cuda.h"
 
+#include "bench.h"
 #include "device.h"
 #include "host.h"
 #include "multi.h"
@@ -19,19 +20,21 @@ int main(int argc, char **argv) {
   // auto t = new DeviceTable(1 << width);
   auto t = new MultilevelTable(1 << width);
 
-  u32 *array, *set;
-  cudaMalloc(&array, sizeof(u32) * entry);
+  insertion();
+
+  u32 *key, *set;
+  cudaMalloc(&key, sizeof(u32) * entry);
   cudaMalloc(&set, sizeof(u32) * entry);
   cudaMemset(set, 0, sizeof(u32) * entry);
-  randomizeDevice(array, entry);
+  randomizeDevice(key, entry);
   syncCheck();
 
-  t->insert(array, entry);
-  t->lookup(array, set, entry);
+  t->insert(key, entry);
+  t->lookup(key, set, entry);
 
   syncCheck();
 
-  cudaFree(array);
+  cudaFree(key);
   delete t;
 
   return 0;

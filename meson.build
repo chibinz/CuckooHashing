@@ -7,9 +7,10 @@ incdir = include_directories('include')
 add_global_arguments('-dc', language : 'cuda')
 
 executable('chash',
-           'src/main.cu',
+           'src/bench.cu',
            'src/device.cu',
            'src/host.cu',
+           'src/main.cu',
            'src/multi.cu',
            'src/xxhash.cu',
            install : true,
