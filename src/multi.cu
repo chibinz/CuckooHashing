@@ -22,7 +22,7 @@ __global__ void divideKernel(MultilevelTable *t, u32 *key, u32 n) {
     if (old < t->bucketCapacity) {
       t->bucketData[b * t->bucketCapacity + old] = key[id];
     } else {
-      printf("Bucket overflow! %u\n", b);
+      // printf("Bucket overflow! %u\n", b);
       atomicAdd(&t->collision, 1);
     }
   }

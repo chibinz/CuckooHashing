@@ -83,7 +83,7 @@ DeviceTable::DeviceTable(u32 capacity) {
   collision = 0;
   thread = 1024;
   block = ceil(capacity, thread);
-  threshold = 4 * bit_width(capacity);
+  threshold = 8 * bit_width(capacity);
 
   cudaMalloc(&val, sizeof(u32) * dim * len);
   cudaMalloc(&seed, sizeof(u32) * dim);

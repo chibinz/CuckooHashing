@@ -15,21 +15,29 @@ using Table = MultilevelTable;
 
 constexpr u32 repeat = 16;
 
+#include <chrono>
+
+using namespace std::chrono;
+using Clock = high_resolution_clock;
 inline double time_func(std::function<void()> f) {
-  float duration;
-  cudaEvent_t start, stop;
+  // float duration;
+  // cudaEvent_t start, stop;
 
-  cudaEventCreate(&start);
-  cudaEventRecord(start, 0);
+  // cudaEventCreate(&start);
+  // cudaEventRecord(start, 0);
 
+  auto start = Clock::now();
   f();
+  auto end = Clock::now();
 
-  cudaEventCreate(&stop);
-  cudaEventRecord(stop, 0);
-  cudaEventSynchronize(stop);
+  auto nano = duration_cast<nanoseconds>(end - start).count();
 
-  cudaEventElapsedTime(&duration, start, stop);
-  return (double)(duration);
+  // cudaEventCreate(&stop);
+  // cudaEventRecord(stop, 0);
+  // cudaEventSynchronize(stop);
+
+  // cudaEventElapsedTime(&duration, start, stop);
+  return (double)(nano) / 1e6;
 }
 
 void test() {
@@ -130,44 +138,37 @@ void lookup() {
 }
 
 void stress() {
-  printf("%s\n", "Lookup");
-  printf("%-16s%-16s%-16s%-16s\n", "i", "Lookup/Mops", "Mean/ms", "StdDev/ms");
+  printf("%s\n", "Stress test");
+  printf("%-16s%-16s%-16s%-16s\n", "s", "Insertion/Mops", "Mean/ms", "StdDev/ms");
 
   double scale[] = {2.0, 1.9, 1.8, 1.7,  1.6,  1.5, 1.4,
-                    1.3, 1.2, 1.1, 1.05, 1.02, 1.01};
+                    1.3, 1.2, 1.1};// 1.05, 1.02, 1.01};
 
-  u32 *key, *set, n = 1 << 24;
+  u32 *key, n = 1 << 24;
   cudaMalloc(&key, sizeof(u32) * n);
-  cudaMalloc(&set, sizeof(u32) * n);
   randomizeDevice(key, n);
   syncCheck();
 
-  auto t = new Table(1 << 25);
-  t->insert(key, n);
-  syncCheck();
-
-  for (u32 i = 0; i <= 10; i += 1) {
+  for (auto s : scale) {
+    u32 capacity = n * s;
     double sum = 0.0, sum2 = 0.0;
-    if (i != 0) {
-      randomizeDevice(key, n * i / 10);
-    }
-    cudaMemset(set, 0, sizeof(u32) * n);
-    syncCheck();
 
     for (u32 j = 0; j < repeat; j += 1) {
-      auto dt = time_func([&] { t->lookup(key, set, n); });
+      auto t = new Table(capacity);
+
+      auto dt = time_func([&] { t->insert(key, n); });
       sum += dt;
       sum2 += dt * dt;
 
+      delete t;
       syncCheck();
     }
 
     double mean = sum / (double)(repeat);
     double stddev = sqrt((sum2 / (double)(repeat)) - mean * mean);
-    printf("%-16u%-16.4f%-16.4f%-16.4f\n", i, (n / 10e6) / (mean / 10e3), mean,
+    printf("%-16.2f%-16.4f%-16.4f%-16.4f\n", s, (n / 10e6) / (mean / 10e3), mean,
            stddev);
   }
 
-  delete t;
   cudaFree(key);
 }

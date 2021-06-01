@@ -6,3 +6,5 @@ void test();
 void insertion();
 /// Experiment 2
 void lookup();
+/// Experiment 3
+void stress();

@@ -11,8 +11,8 @@
 int main() {
 
   test();
-  insertion();
-  lookup();
+  // insertion(); lookup();
+  stress();
 
   return 0;
 }
