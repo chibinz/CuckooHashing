@@ -52,20 +52,29 @@ __global__ void insertKernel(MultilevelTable *t) {
         u32 key = xxhash(t->seed[bid * t->dim + d], k) % t->len;
         // k = atomicExch(&local[d * t->len + key], k);
         k = atomicExch(&t->val[bid * t->len * t->dim + d * t->len + key], k);
+        // u32 old = local[d * t->len + key];
+        // __syncthreads();
+        // local[d * t->len + key] = k;
+        // __syncthreads();
+        // if (k == local[d * t->len + key]) {
+        //   k = old;
+        // }
+        // __syncthreads();
       }
 
       // Guard to avoid bank conflict
       if (local[t->dim * t->len] == 0 && k != empty) {
         local[t->dim * t->len] = 1;
-        // for (u32 d = 0; d < t->dim; d += 1) {
-        //   t->seed[bid * t->dim + d] = xxhash(tid, t->seed[bid * t->dim + d]);
-        // }
+        for (u32 d = 0; d < t->dim; d += 1) {
+          t->seed[bid * t->dim + d] = xxhash(tid, t->seed[bid * t->dim + d]);
+        }
       }
       __syncthreads();
 
     } while (local[t->dim * t->len] != 0);
   }
 
+  __syncthreads();
   // Copy value from shared memory to global memory
   for (u32 i = threadIdx.x; i < t->dim * t->len; i += blockDim.x) {
     // t->val[bid * t->len * t->dim + i] = local[i];

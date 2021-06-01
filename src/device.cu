@@ -1,7 +1,10 @@
 #include <cstdio>
+#include <cstdlib>
+#include <ctime>
 
 #include "cuda.h"
 #include "cuda_runtime.h"
+#include "curand.h"
 #include "device_launch_parameters.h"
 
 #include "common.h"
@@ -60,7 +63,10 @@ __global__ void lookupKernel(DeviceTable *t, u32 *key, u32 *set, u32 n) {
 } // namespace
 
 void randomizeDevice(u32 *a, u32 n) {
-  randomizeKernel<<<ceil(n, 256), 256>>>(a, n);
+  auto tmp = new u32[n];
+  randomizeHost(tmp, n);
+  cudaMemcpy(a, tmp, sizeof(u32) *n, cudaMemcpyHostToDevice);
+  delete[] tmp;
 }
 
 void *DeviceTable::operator new(usize size) {
@@ -90,6 +96,7 @@ DeviceTable::~DeviceTable() {
 }
 
 void DeviceTable::reset() {
+  // printf("Reset!\n");
   collision = 0;
   cudaMemset(val, -1, sizeof(u32) * dim * len);
   randomizeDevice(seed, dim);

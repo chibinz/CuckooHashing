@@ -20,6 +20,7 @@ namespace {
       printf("%s:%d %s!\n", __FILE__, __LINE__, cudaGetErrorString(err));      \
       exit(-1);                                                                \
     }                                                                          \
+    /* printf("%s:%d Pass!\n", __FILE__, __LINE__); */                         \
   } while (0);
 
 void swap(u32 *a, u32 *b) {
@@ -39,6 +40,12 @@ u32 bit_width(u32 x) {
   }
 
   return w;
+}
+
+void randomizeHost(u32 *a, u32 n) {
+  for (usize i = 0; i < n; i += 1) {
+    a[i] = rand();
+  }
 }
 
 } // namespace
