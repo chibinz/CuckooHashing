@@ -12,7 +12,7 @@ int main() {
 
   test();
   // insertion(); lookup();
-  stress();
+  evict();
 
   return 0;
 }

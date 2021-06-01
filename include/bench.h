@@ -8,3 +8,5 @@ void insertion();
 void lookup();
 /// Experiment 3
 void stress();
+/// Experiment 4
+void evict();

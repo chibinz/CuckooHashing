@@ -172,3 +172,38 @@ void stress() {
 
   cudaFree(key);
 }
+
+void evict() {
+  printf("%s\n", "Eviction bound test");
+  printf("%-16s%-16s%-16s%-16s\n", "e", "Insertion/Mops", "Mean/ms", "StdDev/ms");
+
+  u32 *key, n = 1 << 24;
+  cudaMalloc(&key, sizeof(u32) * n);
+  randomizeDevice(key, n);
+  syncCheck();
+
+  for (double e = 0.4; e <= 4.0; e += 0.1) {
+    u32 capacity = n * 1.4;
+    double sum = 0.0, sum2 = 0.0;
+
+    for (u32 j = 0; j < repeat; j += 1) {
+      auto t = new Table(capacity);
+      t->threshold = e * bit_width(t->dim * t->len);
+      syncCheck();
+
+      auto dt = time_func([&] { t->insert(key, n); });
+      sum += dt;
+      sum2 += dt * dt;
+
+      delete t;
+      syncCheck();
+    }
+
+    double mean = sum / (double)(repeat);
+    double stddev = sqrt((sum2 / (double)(repeat)) - mean * mean);
+    printf("%-16.1f%-16.4f%-16.4f%-16.4f\n", e, (n / 10e6) / (mean / 10e3), mean,
+           stddev);
+  }
+
+  cudaFree(key);
+}
