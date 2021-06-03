@@ -18,10 +18,10 @@ struct DeviceTable {
   u32 *val;
   /// Seed for each subtable hash function
   u32 *seed;
-  /// Number of sub-tables / hash functions
-  u32 dim;
   /// Length of a single subtable
   u32 len;
+  /// Number of sub-tables / hash functions
+  u32 dim;
   /// Number of iterations before rehash happens
   u32 threshold;
   /// Total number of collisions occurred

@@ -11,7 +11,7 @@
 #include "multi.h"
 #include "types.h"
 
-using Table = MultilevelTable;
+using Table = DeviceTable;
 
 constexpr u32 repeat = 16;
 
@@ -142,7 +142,7 @@ void stress() {
   printf("%-16s%-16s%-16s%-16s\n", "s", "Insertion/Mops", "Mean/ms", "StdDev/ms");
 
   double scale[] = {2.0, 1.9, 1.8, 1.7,  1.6,  1.5, 1.4,
-                    1.3, 1.2, 1.1};// 1.05, 1.02, 1.01};
+                    1.3, 1.2}; // 1.1, 1.05, 1.02, 1.01};
 
   u32 *key, n = 1 << 24;
   cudaMalloc(&key, sizeof(u32) * n);
@@ -182,7 +182,7 @@ void evict() {
   randomizeDevice(key, n);
   syncCheck();
 
-  for (double e = 0.4; e <= 4.0; e += 0.1) {
+  for (double e = 0.3; e <= 4.0; e += 0.1) {
     u32 capacity = n * 1.4;
     double sum = 0.0, sum2 = 0.0;
 

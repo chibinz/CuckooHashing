@@ -23,15 +23,15 @@ namespace {
     /* printf("%s:%d Pass!\n", __FILE__, __LINE__); */                         \
   } while (0);
 
-void swap(u32 *a, u32 *b) {
+inline void swap(u32 *a, u32 *b) {
   u32 temp = *a;
   *a = *b;
   *b = temp;
 }
 
-u32 ceil(u32 a, u32 b) { return a / b + !!(a % b); }
+inline u32 ceil(u32 a, u32 b) { return a / b + !!(a % b); }
 
-u32 bit_width(u32 x) {
+inline u32 bit_width(u32 x) {
   u32 w = 0;
 
   while (x > 0) {
@@ -42,7 +42,7 @@ u32 bit_width(u32 x) {
   return w;
 }
 
-void randomizeHost(u32 *a, u32 n) {
+inline void randomizeHost(u32 *a, u32 n) {
   for (usize i = 0; i < n; i += 1) {
     a[i] = rand();
   }
