@@ -65,7 +65,7 @@ __global__ void lookupKernel(DeviceTable *t, u32 *key, u32 *set, u32 n) {
 void randomizeDevice(u32 *a, u32 n) {
   auto tmp = new u32[n];
   randomizeHost(tmp, n);
-  cudaMemcpy(a, tmp, sizeof(u32) *n, cudaMemcpyHostToDevice);
+  cudaMemcpy(a, tmp, sizeof(u32) * n, cudaMemcpyHostToDevice);
   delete[] tmp;
 }
 
