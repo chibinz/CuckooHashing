@@ -14,18 +14,6 @@
 
 namespace {
 
-__global__ void randomizeKernel(u32 *a, u32 n) {
-  u32 id = threadIdx.x + blockIdx.x * blockDim.x;
-
-  if (id < n) {
-    u32 acc = xxhash(a[id], n);
-    acc = xxhash(acc, threadIdx.x);
-    acc = xxhash(acc, blockIdx.x);
-    acc = xxhash(acc, blockDim.x);
-    a[id] = (u32)(acc);
-  }
-}
-
 __global__ void insertKernel(DeviceTable *t, u32 *key, u32 n) {
   u32 id = threadIdx.x + blockIdx.x * blockDim.x;
 
@@ -62,12 +50,6 @@ __global__ void lookupKernel(DeviceTable *t, u32 *key, u32 *set, u32 n) {
 
 } // namespace
 
-void randomizeDevice(u32 *a, u32 n) {
-  auto tmp = new u32[n];
-  randomizeHost(tmp, n);
-  cudaMemcpy(a, tmp, sizeof(u32) * n, cudaMemcpyHostToDevice);
-  delete[] tmp;
-}
 
 void *DeviceTable::operator new(usize size) {
   void *ret = nullptr;

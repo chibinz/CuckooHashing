@@ -17,18 +17,6 @@
 
 namespace {
 
-__global__ void randomizeKernel(u32 *a, u32 n) {
-  u32 id = threadIdx.x + blockIdx.x * blockDim.x;
-
-  if (id < n) {
-    u32 acc = xxhash(a[id], n);
-    acc = xxhash(acc, threadIdx.x);
-    acc = xxhash(acc, blockIdx.x);
-    acc = xxhash(acc, blockDim.x);
-    a[id] = (u32)(acc);
-  }
-}
-
 __global__ void insertKernel(StashTable *t, u32 *key, u32 n) {
   u32 id = threadIdx.x + blockIdx.x * blockDim.x;
 

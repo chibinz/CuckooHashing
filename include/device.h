@@ -10,8 +10,6 @@
 #include "host.h"
 #include "types.h"
 
-void randomizeDevice(u32 *array, u32 n);
-
 /// Convenience struct to pass around as function parameter
 struct DeviceTable {
   /// Actual data

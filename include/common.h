@@ -56,4 +56,11 @@ inline void randomizeHost(u32 *a, u32 n) {
   }
 }
 
+inline void randomizeDevice(u32 *a, u32 n) {
+  auto tmp = new u32[n];
+  randomizeHost(tmp, n);
+  cudaMemcpy(a, tmp, sizeof(u32) * n, cudaMemcpyHostToDevice);
+  delete[] tmp;
+}
+
 } // namespace
