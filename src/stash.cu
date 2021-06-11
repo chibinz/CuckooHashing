@@ -93,6 +93,8 @@ void StashTable::insert(u32 *k, u32 n) {
   reset();
   insertKernel<<<block, thread>>>(this, k, n);
   syncCheck();
+  collision = stashSize;
+  syncCheck();
 }
 
 void StashTable::lookup(u32 *k, u32 *s, u32 n) {

@@ -1,8 +1,8 @@
 #include <cassert>
+#include <chrono>
 #include <cmath>
 #include <cstdio>
 #include <functional>
-#include <chrono>
 
 #include "cuda.h"
 #include "cuda_runtime.h"
@@ -61,7 +61,7 @@ void test() {
 
   for (u32 i = 0; i < entry; i += 1) {
     if (set[i] != 1) {
-      pass =false;
+      pass = false;
       printf("%u\n", i);
     }
   }
@@ -99,7 +99,7 @@ void insertion() {
 
     double mean = sum / (double)(repeat);
     double stddev = sqrt((sum2 / (double)(repeat)) - mean * mean);
-    printf("%-16u%-16.4f%-16.4f%-16.4f\n", s, (n / 10e6) / (mean / 10e3), mean,
+    printf("%-16u%-16.4f%-16.4f%-16.4f\n", s, (n / 1e6) / (mean / 1e3), mean,
            stddev);
   }
 }
@@ -136,7 +136,7 @@ void lookup() {
 
     double mean = sum / (double)(repeat);
     double stddev = sqrt((sum2 / (double)(repeat)) - mean * mean);
-    printf("%-16u%-16.4f%-16.4f%-16.4f\n", i, (n / 10e6) / (mean / 10e3), mean,
+    printf("%-16u%-16.4f%-16.4f%-16.4f\n", i, (n / 1e6) / (mean / 1e3), mean,
            stddev);
   }
 
@@ -146,11 +146,11 @@ void lookup() {
 
 void stress() {
   printf("%s\n", "Stress test");
-  printf("%-16s%-16s%-16s%-16s\n", "s", "Insertion/Mops", "Mean/ms",
-         "StdDev/ms");
+  printf("%-16s%-16s%-16s%-16s%-16s\n", "s", "Insertion/Mops", "Collision/%",
+         "Mean/ms", "StdDev/ms");
 
-  double scale[] = {2.0, 1.9, 1.8, 1.7, 1.6,
-                    1.5, 1.4, 1.3, 1.2, 1.1, 1.05, 1.02, 1.01};
+  double scale[] = {2.0, 1.9, 1.8, 1.7,  1.6,  1.5, 1.4,
+                    1.3, 1.2, 1.1, 1.05, 1.02, 1.01};
 
   u32 *key, n = 1 << 24;
   cudaMalloc(&key, sizeof(u32) * n);
@@ -158,7 +158,7 @@ void stress() {
   syncCheck();
 
   for (auto s : scale) {
-    u32 capacity = n * s;
+    u32 capacity = n * s, collision = 0;
     double sum = 0.0, sum2 = 0.0;
 
     for (u32 j = 0; j < repeat; j += 1) {
@@ -167,6 +167,7 @@ void stress() {
       auto dt = time_func([&] { t->insert(key, n); });
       sum += dt;
       sum2 += dt * dt;
+      collision += t->collision;
 
       delete t;
       syncCheck();
@@ -174,8 +175,8 @@ void stress() {
 
     double mean = sum / (double)(repeat);
     double stddev = sqrt((sum2 / (double)(repeat)) - mean * mean);
-    printf("%-16.2f%-16.4f%-16.4f%-16.4f\n", s, (n / 10e6) / (mean / 10e3),
-           mean, stddev);
+    printf("%-16.2f%-16.4f%-16.2f%-16.4f%-16.4f\n", s, (n / 1e6) / (mean / 1e3),
+           (collision * 1e2) / (repeat * n), mean, stddev);
   }
 
   cudaFree(key);
@@ -183,16 +184,19 @@ void stress() {
 
 void evict() {
   printf("%s\n", "Eviction bound test");
-  printf("%-16s%-16s%-16s%-16s\n", "e", "Insertion/Mops", "Mean/ms",
-         "StdDev/ms");
+  printf("%-16s%-16s%-16s%-16s%-16s\n", "e", "Insertion/Mops", "Collision/%",
+         "Mean/ms", "StdDev/ms");
 
   u32 *key, n = 1 << 24;
   cudaMalloc(&key, sizeof(u32) * n);
   randomizeDevice(key, n);
   syncCheck();
 
-  for (double e = 0.3; e <= 4.0; e += 0.1) {
-    u32 capacity = n * 1.4;
+  double evict[] = {0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8,
+                    0.9, 1.0, 2.0, 4.0, 8.0, 16.0};
+
+  for (auto e : evict) {
+    u32 capacity = n * 1.4, collision = 0;
     double sum = 0.0, sum2 = 0.0;
 
     for (u32 j = 0; j < repeat; j += 1) {
@@ -203,6 +207,7 @@ void evict() {
       auto dt = time_func([&] { t->insert(key, n); });
       sum += dt;
       sum2 += dt * dt;
+      collision += t->collision;
 
       delete t;
       syncCheck();
@@ -210,8 +215,8 @@ void evict() {
 
     double mean = sum / (double)(repeat);
     double stddev = sqrt((sum2 / (double)(repeat)) - mean * mean);
-    printf("%-16.1f%-16.4f%-16.4f%-16.4f\n", e, (n / 10e6) / (mean / 10e3),
-           mean, stddev);
+    printf("%-16.1f%-16.4f%-16.2f%-16.4f%-16.4f\n", e, (n / 1e6) / (mean / 1e3),
+           (collision * 1e2) / (repeat * n), mean, stddev);
   }
 
   cudaFree(key);
