@@ -2,6 +2,7 @@
 #include <cmath>
 #include <cstdio>
 #include <functional>
+#include <chrono>
 
 #include "cuda.h"
 #include "cuda_runtime.h"
@@ -9,13 +10,12 @@
 #include "bench.h"
 #include "device.h"
 #include "multi.h"
+#include "stash.h"
 #include "types.h"
 
-using Table = DeviceTable;
+using Table = StashTable;
 
 constexpr u32 repeat = 16;
-
-#include <chrono>
 
 using namespace std::chrono;
 using Clock = high_resolution_clock;
@@ -57,12 +57,19 @@ void test() {
 
   syncCheck();
 
+  auto pass = true;
+
   for (u32 i = 0; i < entry; i += 1) {
-    assert(set[i] == 1);
+    if (set[i] != 1) {
+      pass =false;
+      printf("%u\n", i);
+    }
   }
 
   cudaFree(key);
   delete t;
+
+  assert(pass && "Failed correctness testing!");
 }
 
 void insertion() {
@@ -139,10 +146,11 @@ void lookup() {
 
 void stress() {
   printf("%s\n", "Stress test");
-  printf("%-16s%-16s%-16s%-16s\n", "s", "Insertion/Mops", "Mean/ms", "StdDev/ms");
+  printf("%-16s%-16s%-16s%-16s\n", "s", "Insertion/Mops", "Mean/ms",
+         "StdDev/ms");
 
-  double scale[] = {2.0, 1.9, 1.8, 1.7,  1.6,  1.5, 1.4,
-                    1.3, 1.2}; // 1.1, 1.05, 1.02, 1.01};
+  double scale[] = {2.0, 1.9, 1.8, 1.7, 1.6,
+                    1.5, 1.4, 1.3, 1.2, 1.1, 1.05, 1.02, 1.01};
 
   u32 *key, n = 1 << 24;
   cudaMalloc(&key, sizeof(u32) * n);
@@ -166,8 +174,8 @@ void stress() {
 
     double mean = sum / (double)(repeat);
     double stddev = sqrt((sum2 / (double)(repeat)) - mean * mean);
-    printf("%-16.2f%-16.4f%-16.4f%-16.4f\n", s, (n / 10e6) / (mean / 10e3), mean,
-           stddev);
+    printf("%-16.2f%-16.4f%-16.4f%-16.4f\n", s, (n / 10e6) / (mean / 10e3),
+           mean, stddev);
   }
 
   cudaFree(key);
@@ -175,7 +183,8 @@ void stress() {
 
 void evict() {
   printf("%s\n", "Eviction bound test");
-  printf("%-16s%-16s%-16s%-16s\n", "e", "Insertion/Mops", "Mean/ms", "StdDev/ms");
+  printf("%-16s%-16s%-16s%-16s\n", "e", "Insertion/Mops", "Mean/ms",
+         "StdDev/ms");
 
   u32 *key, n = 1 << 24;
   cudaMalloc(&key, sizeof(u32) * n);
@@ -201,8 +210,8 @@ void evict() {
 
     double mean = sum / (double)(repeat);
     double stddev = sqrt((sum2 / (double)(repeat)) - mean * mean);
-    printf("%-16.1f%-16.4f%-16.4f%-16.4f\n", e, (n / 10e6) / (mean / 10e3), mean,
-           stddev);
+    printf("%-16.1f%-16.4f%-16.4f%-16.4f\n", e, (n / 10e6) / (mean / 10e3),
+           mean, stddev);
   }
 
   cudaFree(key);

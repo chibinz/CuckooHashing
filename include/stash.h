@@ -9,9 +9,7 @@ struct StashTable : public DeviceTable {
   u32 stashCapacity;
 
   StashTable() = default;
-  /// Stash size set to capacity / 16
   StashTable(u32 capacity);
-  /// Destructor of `DeviceTable` will free `val` and `seed`
   ~StashTable();
   /// Try to insert keys, if not possible, store into stash
   void insert(u32 *k, u32 n);

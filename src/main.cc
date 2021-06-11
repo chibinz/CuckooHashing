@@ -11,12 +11,11 @@
 
 int main() {
 
-  srand(time(NULL));
-  // test();
-  // insertion();
-  // lookup();
+  test();
+  insertion();
+  lookup();
   stress();
-  // evict();
+  evict();
 
   return 0;
 }

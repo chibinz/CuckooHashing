@@ -41,7 +41,7 @@ __global__ void insertKernel(StashTable *t, u32 *key, u32 n) {
       k = atomicExch(&t->val[d * t->len + key], k);
     }
 
-    // Record number of collisions
+    // Shovel conflicting keys into stash
     if (k != empty) {
       u32 old = atomicAdd(&t->stashSize, 1);
       t->stash[old] = k;
@@ -78,7 +78,10 @@ __global__ void lookupKernel(StashTable *t, u32 *key, u32 *set, u32 n) {
 
 StashTable::StashTable(u32 capacity) : DeviceTable(capacity) {
   stashSize = 0;
-  stashCapacity = ceil(capacity, 16);
+  stashCapacity = ceil(capacity, 8);
+  thread = 256;
+  block = ceil(capacity, thread);
+  threshold = 1 * bit_width(capacity);
   cudaMallocManaged(&stash, sizeof(u32) * stashCapacity);
 
   syncCheck();
