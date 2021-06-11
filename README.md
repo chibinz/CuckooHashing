@@ -1,6 +1,18 @@
 # CuckooHashing
 Concurrent cuckoo hash table implemented in CUDA
 
+## Build
+```
+sudo apt install meson ninja-build nvidia-cuda-toolkit
+meson setup build
+meson compile -C build
+```
+
+## Run
+```
+build/chash
+```
+
 ## Important Concepts
 ### Computation Hierarchy
 - Software concept
