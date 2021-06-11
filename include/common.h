@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdlib>
+#include <set>
 
 #include "cuda.h"
 #include "cuda_runtime.h"
@@ -43,8 +44,15 @@ inline u32 bit_width(u32 x) {
 }
 
 inline void randomizeHost(u32 *a, u32 n) {
-  for (usize i = 0; i < n; i += 1) {
-    a[i] = rand();
+  auto unique = std::set<u32>();
+  u32 i = 0;
+
+  while (i < n) {
+    auto e = rand();
+    auto p = unique.insert(e);
+    if (p.second) {
+      a[i++] = e;
+    }
   }
 }
 
