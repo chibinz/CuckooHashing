@@ -12,6 +12,20 @@ meson compile -C build
 ```
 build/chash
 ```
+## Overview
+
+## Experiments
+### 1. Insertion
+> Create a hash table of size 2^25 in GPU global memory, where each table entry stores a 32-bit integer. Insert a set of 2^s random integer keys into the hash table, for s = 10, 11, ..., 24.
+
+### 2. Lookup
+> Insert a set Sܵ of 2^24 random keys into a hash table of size 2^25, then perform lookups for the following sets of keys ܵS_0, ..., S_10. Each set ܵS_i should contain 2^24 keys, where (100 - 10i) percent of the keys are randomly chosen from S, and the remainder are random 32-bit keys. For example, ܵS_0 should contain only random keys from S, while S_5 should 50% random keys from S, and 50% completely random keys.
+
+### 3. Stress test
+> Fix a set of n = 2^24 random keys, and measure the time to insert the keys into hash tables of sizes s = 1.1n, 1.2n, ..., 2n. ݊Also, measure the insertion times for hash tables of sizes 1.01n, 1.02݊n and 1.05n. Terminate the experiment if it takes too long and report the time used.
+
+### 4. Eviction bound test
+> Using n = 2^24 random keys and a hash table of size 1.4n, xperiment with different bounds on the maximum length of an eviction chain before restarting. Which bound gives the best running time for constructing the hash table? Note however you are not required to find the optimal bound.
 
 ## Important Concepts
 ### Computation Hierarchy
