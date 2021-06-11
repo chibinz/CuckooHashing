@@ -13,6 +13,7 @@ executable('chash',
            'src/main.cc',
            'src/device.cu',
            'src/multi.cu',
+           'src/stash.cu',
            'src/xxhash.cu',
            install : true,
            include_directories : incdir)
