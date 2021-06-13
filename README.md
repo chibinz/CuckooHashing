@@ -100,6 +100,10 @@ e    | Naive | Multilevel | Stash
 8.0  | x     |            |
 16.0 | x     |            |
 
+## Reference
+1. Timo Kehrer and Alice Miller (Eds.):Workshop on Graphs as Models 2017 (GAM ’17)EPTCS 263, 2017, pp. 1–15, doi:10.4204/EPTCS.263.1c©N.W. Cassee & A.J. WijsAnalysing the Performance of GPU Hash Tables for StateSpace Exploration
+2. Efficient
+
 ## Important Concepts
 ### Computation Hierarchy
 - Software concept

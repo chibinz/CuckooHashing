@@ -20,24 +20,26 @@ constexpr u32 repeat = 16;
 using namespace std::chrono;
 using Clock = high_resolution_clock;
 inline double time_func(std::function<void()> f) {
-  // float duration;
-  // cudaEvent_t start, stop;
+  float duration;
+  cudaEvent_t start, stop;
 
-  // cudaEventCreate(&start);
-  // cudaEventRecord(start, 0);
+  cudaEventCreate(&start);
+  cudaEventRecord(start, 0);
 
-  auto start = Clock::now();
+  // auto start = Clock::now();
+
   f();
-  auto end = Clock::now();
 
-  auto nano = duration_cast<nanoseconds>(end - start).count();
+  // auto end = Clock::now();
+  // auto nano = duration_cast<nanoseconds>(end - start).count();
 
-  // cudaEventCreate(&stop);
-  // cudaEventRecord(stop, 0);
-  // cudaEventSynchronize(stop);
+  cudaEventCreate(&stop);
+  cudaEventRecord(stop, 0);
+  cudaEventSynchronize(stop);
 
-  // cudaEventElapsedTime(&duration, start, stop);
-  return (double)(nano) / 1e6;
+  cudaEventElapsedTime(&duration, start, stop);
+
+  return (double)(duration);
 }
 
 void test() {
@@ -86,6 +88,7 @@ void insertion() {
 
     for (u32 i = 0; i < repeat; i += 1) {
       auto t = new Table(1 << 25);
+      t->threshold = 4 * bit_width(n);
 
       auto dt = time_func([&] { t->insert(key, n); });
       sum += dt;
@@ -115,6 +118,7 @@ void lookup() {
   syncCheck();
 
   auto t = new Table(1 << 25);
+  t->threshold = 4 * bit_width(n);
   t->insert(key, n);
   syncCheck();
 
@@ -163,6 +167,7 @@ void stress() {
 
     for (u32 j = 0; j < repeat; j += 1) {
       auto t = new Table(capacity);
+      t->threshold = bit_width(capacity);
 
       auto dt = time_func([&] { t->insert(key, n); });
       sum += dt;
@@ -201,7 +206,7 @@ void evict() {
 
     for (u32 j = 0; j < repeat; j += 1) {
       auto t = new Table(capacity);
-      t->threshold = e * bit_width(t->dim * t->len);
+      t->threshold = e * bit_width(n);
       syncCheck();
 
       auto dt = time_func([&] { t->insert(key, n); });

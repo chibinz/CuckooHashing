@@ -1,6 +1,8 @@
 .vscode/
 .cache/
 
+*.out
+
 *.i
 *.ii
 *.gpu
