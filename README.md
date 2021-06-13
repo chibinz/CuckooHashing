@@ -16,34 +16,34 @@ build/chash
 ## Optimizations
 
 ### Choice of Hash Function
-Initially, we follow Alcantera's advice using the hash function with formula [(c0 + c1 * k) mod 1900813], where c0, c1 are 2 constants generated at initialization for each subtable. However experiment 1 shows that this is not an ideal choice. With capacity set to 2 ^ 25 and load factor about 0.3, the straightforward implementation of cuckoo hashing rehashes indefinitely and never terminates.
+Initially, we follow Alcantara's advice using the hash function with the formula [(c0 + c1 * k) mod 1900813], where c0, c1 are 2 constants generated at initialization for each subtable. However, experiment 1 shows that this is not an ideal choice. With capacity set to 2 ^ 25 and load factor about 0.3, the straightforward implementation of cuckoo hashing rehashes indefinitely and never terminates.
 
-After sometime researching online comparing the merits and demerits of several hash functions, we settled on `xxHash32` as our hash function. Benchmarks performed by Jarzynski et al. suggests that `xxHash32` strikes a good balance between run time performance and hash table collision rate. Switching to `xxHash32` proved to be wise choice with substantial decrease in collision count and negligible runtime overhead. The maximum load factor that the straightforward table was able is contain is now over 0.5. Another benefit of `xxHash32` is that it can be seeded and only require a single u32 as seed. This allows us to generate different hash function for each subtable very efficiently.
+After some time researching online comparing the merits and demerits of several hash functions, we settled on `xxHash32` as our hash function. Benchmarks performed by Jarzynski et al. suggests that `xxHash32` strikes a good balance between run time performance and hash table collision rate. Switching to `xxHash32` proved to be a wise choice with a substantial decrease in collision count and negligible runtime overhead. The maximum load factor that the straightforward table was able to contain is now over 0.5. Another benefit of `xxHash32` is that it can be seeded and only require a single u32 seed. This allows us to generate different hash functions for each subtable very efficiently.
 
 ### Random Number Generation
-At the beginning, we use the same hash function used in our hash table `xxHash32` to generate random integers. We also tried cuda's default random number generator, the `curand` library. Unfortunately, it only supports generating floating point numbers and not suitable for our use case. To be scientific and firm in our reportings, our final implementation uses the `rand()` function from `<stdlib.h>`. Random integers are generated and stored in host memory and later `memcpy`ed to device memory. Duplicates are removed using `std::set`.
+In the beginning, we use the same hash function used in our hash table `xxHash32` to generate random integers. We also tried cuda's default random number generator, the `curand` library. Unfortunately, it only supports generating floating-point numbers and not suitable for our use case. To be scientific and firm in our reportings, our final implementation uses the `rand()` function from `<stdlib.h>`. Random integers are generated and stored in host memory and later `memcpy'ed to the device memory. Duplicates are removed using `std::set`.
 
 ### Straightforward Table
-We first implement straighforward version of Cuckoo hashing. While cuckoo hashing is a recursive process, device functions usually does not favor function calls. Thus the eviction chain is implemented as a for loop with maximum loop count set to eviction bound. If an empty slot is found, we exit the loop early. If no empty slot is found and the maximum iteration is reached, we increment `collision` flagging to host that a rehash is needed. In practice, this rarely happens when load factor is less than 0.5.
+We first implement a straightforward version of Cuckoo hashing. While cuckoo hashing is a recursive process, device functions usually do not favor function calls. Thus the eviction chain is implemented as a for loop with maximum loop count set to eviction bound. If an empty slot is found, we exit the loop early. If no open space is found and the maximum iteration is reached, we increment `collision` flagging to host that a rehash is needed. In practice, this rarely happens when the load factor is less than 0.5.
 
-Note unlike conventional hash tables, accesses to table slots are made simultaneously by multiple GPU threads. To cope with concurrency, we use `atomicExch` to atomically swap key to be hashed and the target table slot. We terminate the loop if an `empty` value is retrieved, i.e., the key is successfully hashed, otherwise continue on the eviction chain.
+Note unlike conventional hash tables, accesses to table slots are made simultaneously by multiple GPU threads. We use `atomicExch` to atomically swap keys to be hashed and the target table slot to cope with concurrency. We terminate the loop if an `empty` value is retrieved, i.e., the key is successfully hashed; otherwise, we continue on the eviction chain.
 
 ### Multilevel Table
-Drawing  from what we've learnt in class, frequent uncoalesced memory access to global memory is often times a performance kill, let alone all accesses must be made atomically. Following this insight, we try to implement a multilevel hahs table where the keys are first hashed into buckets in global memory, and cuckoo hashing is performed on individual buckets in shared memory. If any of the first level buckets is found out to be full, we generate a new hash function, perform a rehash and try to distribute the keys into the hash table more evenly. After the keys are distributed into buckets, we perform cuckoo hashing on individual buckets. If unfortunate choice of hash function is made, we only rehash the conflicting buckets.
+Drawing from what we've learned in class, frequent uncoalesced memory access to global memory is often a performance kill, let alone all accesses must be made atomically. Following this insight, we try to implement a multilevel hash table where the keys are first hashed into buckets in global memory. Cuckoo hashing is performed on individual buckets in shared memory. If any of the first level buckets is found out to be full, we generate a new hash function, perform a rehash and try to distribute the keys into the hash table more evenly. After the keys are distributed into buckets, we perform cuckoo hashing on individual buckets. If an unfortunate choice of a hash function is made, we only rehash the conflicting buckets.
 
-While the insertion time alone is smaller than the straightforward table, combining the time to bucket input puts the multilevel table in disadvantage. Quite contrary to our initial expectation. After extensive research online we've found that global atomics are optimized from the Kepler and Maxwell architecture and then on. Performing atomics on shared memory could actually hurt performance. We regard this as an real life example of how architectural improvement in hardware could turn a turn software optimization into deoptimization. Our result is consistent with more recent publications of xxx and xxx.
+While the insertion time alone is shorter than the straightforward table, combining the time to bucket input puts the multilevel table at a disadvantage. Quite contrary to our initial expectation. After extensive research online, we've found that global atomics are optimized from the Kepler and Maxwell architecture and then on. Performing atomics on shared memory could actually hurt performance. We regard this as a real-life example of how architectural improvement in hardware could turn software optimization into deoptimization. Our result is consistent with more recent publications of [1](https://www.sciencedirect.com/science/article/pii/B9780123859631000046) and [2](https://arxiv.org/pdf/1712.09494).
 
-There are still some advantage of using a multilevel table though. The naive table simply throws the towel when load factor exceeds 0.7. While the multilevel table persists till 0.85, or when capacity = 1.2n. It is also less sensitive to the eviction bound size, reducing the time tuning this parameter.
+There are still some advantages of using a multilevel table, though. The naive table simply throws the towel when the load factor exceeds 0.7. While the multilevel table persists till 0.85, or when capacity = 1.2n. It is also less sensitive to the eviction bound size, reducing the time tuning this parameter.
 
 ### Stash Table
 A third approach that we took comes from the 2 observations:
-1. When load factor is small, collisions happen rather infrequently. A full table rehash in such case is not worth extra overhead.
-2. When load factor is large, collisions are inevitable. Whether or not the hash table will able to contain all keys is a matter of probability and such probability decreases sharply after load factor reaches 0.5.
-Following these observations, we conclude that it might be worthwhile to set aside a small stash to store conflicting keys. This complements the good performance of the straightforward table when the load is small, and helps us advance through even the ill-formulated capacity = 1.01n, achieving the best of both world. Experimental results show that the stash table has the best overall performance.
+1. When the load factor is small, collisions happen relatively infrequently. A complete table rehash, in such a case, is not worth extra overhead.
+2. When the load factor is large, collisions are inevitable. Whether or not the hash table will contain all keys is a matter of probability, and such probability decreases sharply after the load factor reaches 0.7.
+Following these observations, we conclude that it might be worthwhile to set aside a small stash to store conflicting keys. This complements the excellent performance of the straightforward table when the load is small and helps us advance through even the ill-formulated capacity = 1.01n, achieving the best of both worlds. Experimental results show that the stash table has the best overall performance.
 
 ## Experiments
 
-All performance figures are reported in Mops, or million operations per second. Additional performance metrics like total number of collisions, mean time and standard deviation are reported for stash table. Each experiment is repeated 32 times to gain statistical confidence. (N/A means timeout)
+All performance figures are reported in Mops or million operations per second. Additional performance metrics like the total number of collisions, mean time, and standard deviation are reported for the stash table. Each experiment is repeated 32 times to gain statistical confidence. (N/A means timeout)
 
 Config   | Value
 -------- | -----
@@ -56,7 +56,7 @@ CUDA     | 9.0
 
 
 ### Correctness testing
-We verify the correctness of our implementation through inserting 512 elements and performing lookup on the same elements. If all elements are marked as inserted, we conclude that our implementation is correct. Different seeds are used and many trials are performed to obtain reliable conclusion.
+We verify the correctness of our implementation by inserting 512 elements and performing lookups on the same elements. If all elements are marked as inserted, we conclude that our implementation is correct. Different seeds are used, and many trials are performed to obtain reliable conclusions.
 
 ### 1. Insertion
 > Create a hash table of size 2^25 in GPU global memory, where each table entry stores a 32-bit integer. Insert a set of 2^s random integer keys into the hash table, for s = 10, 11, ..., 24.
@@ -79,8 +79,10 @@ s  | Naive    | Multilevel | Stash    | Mean/ms | StdDev/ms
 23 | 374.9033 | 101.5353   | 424.4112 | 19.7653 | 0.0273
 24 | 270.1257 | 118.2038   | 336.0414 | 49.9260 | 0.0452
 
+Performance dips when s = 24 for the naive and stash table because collisions begin to happen. However, the stash table performs better because no rehash is needed.
+
 ### 2. Lookup
-> Insert a set Sܵ of 2^24 random keys into a hash table of size 2^25, then perform lookups for the following sets of keys ܵS_0, ..., S_10. Each set ܵS_i should contain 2^24 keys, where (100 - 10i) percent of the keys are randomly chosen from S, and the remainder are random 32-bit keys. For example, ܵS_0 should contain only random keys from S, while S_5 should 50% random keys from S, and 50% completely random keys.
+> Insert a set Sܵ of 2^24 random keys into a hash table of size 2^25, then perform lookups for the following sets of keys ܵS_0, ..., S_10. Each set ܵS_i should contain 2^24 keys, where (100 - 10i) percent of the keys are randomly chosen from S, and the remainder is random 32-bit keys. For example, ܵS_0 should contain only random keys from S, while S_5 should 50% random keys from S and 50% completely random keys.
 
 i  | Naive    | Multilevel | Stash    | Mean/ms | StdDev/ms
 -- | -------- | ---------- | -------- | ------- | ------
@@ -96,13 +98,13 @@ i  | Naive    | Multilevel | Stash    | Mean/ms | StdDev/ms
 9  | 384.3994 | 257.3034   | 413.5550 | 40.5683 | 0.0174
 10 | 384.8294 | 257.6221   | 394.6965 | 42.5066 | 0.0265
 
-The increase in performance for the naive and multilevel table could be explained by reduction in divergence. While finding a key early means exiting the loop early, other threads in the same warp may not take the same path. This is especially true when i = 0, where keys could be located at all 3 sub tables. The warp scheduler may have to execute every iteration of the for loop twice depending on the distribution of keys. When i = 10, all key lookup fails and all threads perfectly synchronize, reducing divergence to 0.
+The increase in performance for the naive and multilevel table could be explained by the reduction in divergence. While finding a key early means exiting the loop early, other threads in the same warp may not take the same path. This is especially true when i = 0, where keys could be located at all 3 subtables. The warp scheduler may have to execute every iteration of the for loop twice, depending on the distribution of keys. All key lookup fails when i = 10 fails, and all threads perfectly synchronize, reducing divergence to 0.
 
-On the other hand, trend is inverse for the stash table. This is due to the extra time needed to linearly probe the stash when lookup fails in the main table. Since the stash is very small, performance only degrades slightly.
+On the other hand, the trend is inverse for the stash table. This is due to the extra time needed to linearly probe the stash when the lookup fails in the main table. Since the stash is minimal, performance only degrades slightly.
 
 
 ### 3. Stress test
-> Fix a set of n = 2^24 random keys, and measure the time to insert the keys into hash tables of sizes s = 1.1n, 1.2n, ..., 2n. ݊Also, measure the insertion times for hash tables of sizes 1.01n, 1.02݊n and 1.05n. Terminate the experiment if it takes too long and report the time used.
+> Fix a set of n = 2^24 random keys, and measure the time to insert the keys into hash tables of sizes s = 1.1n, 1.2n, ..., 2n. ݊Also, measure the insertion times for hash tables of sizes 1.01n, 1.02݊n, and 1.05n. Terminate the experiment if it takes too long and reports the time used.
 
 s    | Naive    | Multilevel | Stash    | Collision/% | Mean/ms  | StdDev/ms
 ---- | -------- | ---------- | -------- | ----------- | -------- | ------
@@ -120,29 +122,34 @@ s    | Naive    | Multilevel | Stash    | Collision/% | Mean/ms  | StdDev/ms
 1.02 | N/A      | N/A        | 96.4342  |  6.22       | 173.9757 | 0.1293
 1.01 | N/A      | N/A        | 93.8997  |  6.83       | 178.6717 | 0.1222
 
-The result of this experiment shows that using a stash to cope with collisions is indeed a very effective technique.
+This experiment shows that using a stash to cope with collisions is indeed a very effective technique.
 
 ### 4. Eviction bound test
-> Using n = 2^24 random keys and a hash table of size 1.4n, xperiment with different bounds on the maximum length of an eviction chain before restarting. Which bound gives the best running time for constructing the hash table? Note however you are not required to find the optimal bound.
+> Using n = 2^24 random keys and a hash table of size 1.4n, experiment with different bounds on the maximum length of an eviction chain before restarting. Which bound gives the best running time for constructing the hash table? Note, however you are not required to find the optimal bound.
 
-e    | Naive    | Multilevel | Stash    | Collision/% | Mean/ms | StdDev/ms
----- | -------- | ---------- | -------- | ----------- | ------- | ------
-0.2  | N/A      | N/A        | 233.1928 | 4.29        | 71.9457 | 0.1570
-0.3  | N/A      | 66.2509    | 221.4478 | 1.78        | 75.7615 | 0.2969
-0.4  | N/A      | 61.8062    | 216.2449 | 0.60        | 77.5843 | 0.2400
-0.5  | N/A      | 65.6564    | 217.5787 | 0.21        | 77.1087 | 0.1529
-0.6  | N/A      | 80.5926    | 218.5072 | 0.08        | 76.7811 | 0.1830
-0.7  | N/A      | 76.2219    | 218.3521 | 0.06        | 76.8356 | 0.1114
-0.8  | N/A      | 76.6323    | 220.7911 | 0.02        | 75.9868 | 0.1059
-0.9  | N/A      | 85.7437    | 222.7855 | 0.01        | 75.3066 | 0.0954
-1.0  | N/A      | 82.7799    | 225.0036 | 0.00        | 74.5642 | 0.0702
-2.0  | 108.6175 | 91.4688    | 230.3316 | 0.00        | 72.8394 | 0.1075
-4.0  | 176.5028 | 91.9897    | 230.4251 | 0.00        | 72.8098 | 0.0923
-8.0  | 176.4994 | 91.9756    | 230.3617 | 0.00        | 72.8299 | 0.0671
-16.0 | 176.5834 | 91.9972    | 230.3030 | 0.00        | 72.8484 | 0.1776
+e * logn | Naive    | Multilevel | Stash    | Collision/% | Mean/ms | StdDev/ms
+-------- | -------- | ---------- | -------- | ----------- | ------- | ------
+0.2      | N/A      | N/A        | 233.1928 | 4.29        | 71.9457 | 0.1570
+0.3      | N/A      | 66.2509    | 221.4478 | 1.78        | 75.7615 | 0.2969
+0.4      | N/A      | 61.8062    | 216.2449 | 0.60        | 77.5843 | 0.2400
+0.5      | N/A      | 65.6564    | 217.5787 | 0.21        | 77.1087 | 0.1529
+0.6      | N/A      | 80.5926    | 218.5072 | 0.08        | 76.7811 | 0.1830
+0.7      | N/A      | 76.2219    | 218.3521 | 0.06        | 76.8356 | 0.1114
+0.8      | N/A      | 76.6323    | 220.7911 | 0.02        | 75.9868 | 0.1059
+0.9      | N/A      | 85.7437    | 222.7855 | 0.01        | 75.3066 | 0.0954
+1.0      | N/A      | 82.7799    | 225.0036 | 0.00        | 74.5642 | 0.0702
+2.0      | 108.6175 | 91.4688    | 230.3316 | 0.00        | 72.8394 | 0.1075
+4.0      | 176.5028 | 91.9897    | 230.4251 | 0.00        | 72.8098 | 0.0923
+8.0      | 176.4994 | 91.9756    | 230.3617 | 0.00        | 72.8299 | 0.0671
+16.0     | 176.5834 | 91.9972    | 230.3030 | 0.00        | 72.8484 | 0.1776
+
+The first decreasing then increasing trend in the performance of the stash table can be attributed to 2 factors:
+1. The eviction bound
+2. The collision rate
+When the eviction bound is tiny, the number of iterations needed to complete insertion is also small. However, this comes at the cost of a higher collision rate—the collision rate decreases as the eviction bound grows. Insertion performance for all tables converges after e >= 4.0n, which is the default suggested bound. Setting e to 0.1 or smaller causes endless rehash for all tables, and thus figures are not presented.
 
 ## Credit
 1. [Alcantara, Dan A., et al. "Real-time parallel hashing on the GPU."](https://hal.inria.fr/inria-00624777/document)
-2. [Cassee, Nathan, and Anton Wijs. "Analysing the performance of GPU hash tables for state space exploration."](https://arxiv.org/pdf/1712.09494)
+2. [Cassee, Nathan, and Anton Wijs. "Analysing the performance of GPU hash tables for state-space exploration."](https://arxiv.org/pdf/1712.09494)
 3. [Jarzynski, Mark, and Marc Olano. "Hash Functions for GPU Rendering."](https://mdsoar.org/bitstream/handle/11603/20126/paper.pdf?sequence=6&isAllowed=y)
 4. [cudpp/cudpp](https://github.com/cudpp/cudpp)
