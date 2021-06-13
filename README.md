@@ -39,6 +39,7 @@ There are still some advantages of using a multilevel table, though. The naive t
 A third approach that we took comes from the 2 observations:
 1. When the load factor is small, collisions happen relatively infrequently. A complete table rehash, in such a case, is not worth extra overhead.
 2. When the load factor is large, collisions are inevitable. Whether or not the hash table will contain all keys is a matter of probability, and such probability decreases sharply after the load factor reaches 0.7.
+
 Following these observations, we conclude that it might be worthwhile to set aside a small stash to store conflicting keys. This complements the excellent performance of the straightforward table when the load is small and helps us advance through even the ill-formulated capacity = 1.01n, achieving the best of both worlds. Experimental results show that the stash table has the best overall performance.
 
 ## Experiments
@@ -146,6 +147,7 @@ e * logn | Naive    | Multilevel | Stash    | Collision/% | Mean/ms | StdDev/ms
 The first decreasing then increasing trend in the performance of the stash table can be attributed to 2 factors:
 1. The eviction bound
 2. The collision rate
+
 When the eviction bound is tiny, the number of iterations needed to complete insertion is also small. However, this comes at the cost of a higher collision rate—the collision rate decreases as the eviction bound grows. Insertion performance for all tables converges after e >= 4.0n, which is the default suggested bound. Setting e to 0.1 or smaller causes endless rehash for all tables, and thus figures are not presented.
 
 ## Credit
